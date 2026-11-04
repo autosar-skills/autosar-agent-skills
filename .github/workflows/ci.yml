@@ -23,12 +23,12 @@ jobs:
       - name: lint the clean example (expect zero errors)
         run: |
           python skills/dbc-matrix-audit/scripts/dbc_analyze.py \
-            lint examples/demo.dbc --min-severity warn
+            lint skills/dbc-matrix-audit/examples/demo.dbc --min-severity warn
 
       - name: lint the broken example (expect failure, by design)
         run: |
           if python skills/dbc-matrix-audit/scripts/dbc_analyze.py \
-               lint examples/demo_broken.dbc > /dev/null 2>&1; then
+               lint skills/dbc-matrix-audit/examples/demo_broken.dbc > /dev/null 2>&1; then
             echo "demo_broken.dbc unexpectedly passed lint" >&2
             exit 1
           fi
@@ -37,13 +37,13 @@ jobs:
       - name: diff smoke test
         run: |
           python skills/dbc-matrix-audit/scripts/dbc_analyze.py \
-            diff examples/demo.dbc examples/demo.dbc
+            diff skills/dbc-matrix-audit/examples/demo.dbc skills/dbc-matrix-audit/examples/demo.dbc
           python skills/dbc-matrix-audit/scripts/dbc_analyze.py \
-            diff examples/demo.dbc examples/demo_broken.dbc --json --no-fail \
+            diff skills/dbc-matrix-audit/examples/demo.dbc skills/dbc-matrix-audit/examples/demo_broken.dbc --json --no-fail \
             | python -c "import json,sys; d=json.load(sys.stdin); assert d['counts']['error'] > 0, d"
 
       - name: examples are reproducible
         run: |
-          cp examples/demo.dbc /tmp/demo.before
+          cp skills/dbc-matrix-audit/examples/demo.dbc /tmp/demo.before
           python tools/gen_demo_dbc.py
-          diff -q /tmp/demo.before examples/demo.dbc
+          diff -q /tmp/demo.before skills/dbc-matrix-audit/examples/demo.dbc

@@ -7,6 +7,60 @@
 
 ---
 
+## [1.3.0] — 2026-11-04
+
+### 修复
+
+**在隔离环境实测时发现的三个问题。** 此前只在本机 workspace 里装过，
+而本机恰好有仓库在旁边，掩盖了下面第 1 条。
+
+#### 1. `examples/` 没有随 skill 分发，SKILL.md 引用的是死路径
+
+`examples/` 原本在仓库根目录，`openclaw skills install` 只复制 `skills/<name>/`，
+所以安装后的 skill 里没有示例，而 SKILL.md 的「示例」段仍然写着 `examples/demo.dbc`。
+agent 照抄会 `No such file`。
+
+现已移入 `skills/dbc-matrix-audit/examples/`，skill 自包含。同步更新了
+`tools/gen_demo_dbc.py` 的输出路径、CI 全部路径、测试里的 `EXAMPLES` / `DEMO` 常量。
+
+顺带让 agent 能用它**自检环境**：
+
+```bash
+python3 <skill>/scripts/dbc_analyze.py lint <skill>/examples/demo.dbc         # 0 error 0 warn
+python3 <skill>/scripts/dbc_analyze.py lint <skill>/examples/demo_broken.dbc # 10 类缺陷全报
+```
+
+#### 2. 转码后报「0 error」，把真实的 `ENC-001` 吞掉了
+
+实测：agent 完全遵守 Step 2（先 `fix-encoding` 再 `lint`），但因为只 lint 了转码后的文件，
+最终汇报「**0 error**」—— 而原始文件其实是 GBK，`lint` 原文件会明确报 `ENC-001` error。
+用户看到「0 error」会以为文件本来干净。
+
+已在 Step 2 和 Step 4 补上硬要求：**转码过的必须说明「原文件是 GBK」**，
+并加了一句自检：「如果出现 0 error，回看一遍原文件编码」。
+
+`diff` 场景同样要求**两边都先转码** —— 实测时 agent 自己这么做了，
+但 SKILL.md 里原本没写，属于运气好。
+
+#### 3. 文档说「9 类缺陷」，实际是 10 类
+
+`demo_broken.dbc` 触发 10 个不同检查码（4 error / 4 warn / 2 info），
+SKILL.md 和 README 都写着 9 类。这是又一次「文档数字没跟代码对上」。
+
+已改正，并**新增 `TestExampleExpectations` 三条测试**锁住这些数字：
+
+- `demo.dbc` 必须 0 error 0 warn
+- `demo_broken.dbc` 必须刚好触发 10 个码，且集合等于预期
+- 严重度分布必须刚好是 4 / 4 / 2
+
+以后再改检查逻辑导致示例表现变化，CI 会直接红。
+
+### 测试
+
+58 → 61。
+
+---
+
 ## [1.2.0] — 2026-11-04
 
 ### 变更

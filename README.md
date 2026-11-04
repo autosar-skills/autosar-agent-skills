@@ -94,12 +94,12 @@ cantools 是好库，但它解析时丢掉了审计最需要的东西：
 ### 示例
 
 ```bash
-$ python skills/dbc-matrix-audit/scripts/dbc_analyze.py lint examples/demo.dbc
+$ python skills/dbc-matrix-audit/scripts/dbc_analyze.py lint skills/dbc-matrix-audit/examples/demo.dbc
 [I] STA-001  165/167 signals have no GenSigStartValue
       ...
 summary: 0 error, 0 warn, 1 info
 
-$ python skills/dbc-matrix-audit/scripts/dbc_analyze.py lint examples/demo_broken.dbc
+$ python skills/dbc-matrix-audit/scripts/dbc_analyze.py lint skills/dbc-matrix-audit/examples/demo_broken.dbc
 [E] BIT-001  ACM_B_Supply_Voltage and ACM_B_Temperature occupy overlapping bits   (0x201 ACM_B_Status)
 [E] DLC-001  illegal DLC 13   (0x500 Log_Snapshot)
 [E] ENC-001  file is not valid UTF-8 (detected: gbk)
@@ -112,14 +112,14 @@ $ python skills/dbc-matrix-audit/scripts/dbc_analyze.py lint examples/demo_broke
 summary: 4 error, 4 warn, 2 info
 ```
 
-`examples/demo.dbc` 是干净的合成矩阵，`examples/demo_broken.dbc` 埋了 9 类缺陷用于演示。两者都由 `tools/gen_demo_dbc.py` 生成，位分配由程序计算，结构上不可能重叠。
+`skills/dbc-matrix-audit/examples/demo.dbc` 是干净的合成矩阵，`demo_broken.dbc` 埋了 10 类缺陷用于演示。两者都由 `tools/gen_demo_dbc.py` 生成，位分配由程序计算，结构上不可能重叠。
 
 ## 安装
 
 ```bash
 git clone https://github.com/ZhaoBoxiong/autosar-agent-skills.git
 cd autosar-agent-skills
-python -m unittest discover -s tests      # 58 个测试，纯标准库
+python -m unittest discover -s tests      # 61 个测试，纯标准库
 ```
 
 不需要 `pip install`。要用 `dbc-analyze` 这个短命令时：
@@ -158,10 +158,10 @@ openclaw skills info dbc-matrix-audit                    # 确认 Ready
 skills/dbc-matrix-audit/
 ├── SKILL.md                  agent 执行手册（模式判定 / 流程 / 汇报格式）
 ├── scripts/dbc_analyze.py    核心实现（单文件，标准库）
+├── examples/                 合成示例（干净 / 埋坑），随 skill 一起分发
 └── references/               规则细节、编码问题、DBC 语法笔记
-examples/                     合成示例（干净 / 埋坑）
 tools/gen_demo_dbc.py         示例生成器
-tests/                        58 个单元测试（含 diff 专项）
+tests/                        61 个单元测试（含 diff 专项）
 CHANGELOG.md                  版本变更记录
 ```
 

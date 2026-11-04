@@ -5,7 +5,7 @@ description: |
   Audit, lint and diff CAN / CAN FD DBC communication matrices: bit-field overlaps, out-of-range signals, illegal DLC, enum attributes written as numbers, left/right asymmetry, case-only spelling drift, duplicate signal names, missing start values, undeclared transmitters, GBK-encoded comments, raw frame decoding, signal inventory export, and two-revision comparison (renames, CAN id moves, geometry shifts, scaling, value tables, CRC data ids).
 license: MIT
 metadata:
-  version: 1.2.0
+  version: 1.3.0
   author: autosar-agent-skills
   tags: [autosar, can, canfd, dbc, communication-matrix, lint, embedded]
 ---
@@ -57,6 +57,22 @@ python3 <skill>/scripts/dbc_analyze.py lint <dbc>_utf8.dbc
 原因：GBK 文件里所有 `CM_` 注释是坏字节。位域类检查仍有效，但**依赖注释的判断会失效**——包括 CRC DataID 提取、信号用途说明。不转码就解读输出，会把「注释读不到」误判成「注释缺失」，然后错误地建议用户补注释。
 
 后续所有命令都使用转码后的文件。
+
+**⚠️ 转码后 `lint` 报 0 error，不等于原文件没问题。**
+`ENC-001` 是 error 级 —— 它是原文件真实存在的缺陷，只是被「转码」这个动作修掉了。
+如果只在转码后的文件上跑 lint 就汇报「0 error」，用户会以为原始文件本来干净。
+**汇报必须写明「原文件是 GBK，已转码后审计」**，见 Step 4。
+
+`diff` 场景同理：**两个文件都要先转码**，否则注释类差异（含 CRC DataID）读不出来。
+
+### 自检工具是否可用
+
+首次使用或怀疑环境有问题时，用内置示例验证：
+
+```bash
+python3 <skill>/scripts/dbc_analyze.py lint <skill>/examples/demo.dbc           # 期望 0 error 0 warn
+python3 <skill>/scripts/dbc_analyze.py lint <skill>/examples/demo_broken.dbc   # 期望 10 类缺陷全报（4 error / 4 warn / 2 info）
+```
 
 ## Step 3 — 执行
 
@@ -112,12 +128,15 @@ python3 <skill>/scripts/dbc_analyze.py export <dbc> --csv inventory.csv
 
 **汇报固定三段**：
 
-1. **结论** —— 几个 error、能不能上线
+1. **结论** —— 几个 error、能不能上线。**若做过转码，必须在此说明「原文件是 GBK」**
 2. **证据** —— 关键 error 原样贴工具输出
 3. **待确认** —— 工具查不出、必须人工看的部分（见下）
 
 `warn` 按类型归并批量报（「26 条信号删除，集中在 DLP 投影功能」），不要逐条念。
 `info` 一句带过或省略。
+
+**自检**：汇报里如果出现「0 error」，回看一遍原文件编码。0 error 的干净报告 +
+GBK 原文件 = 漏报了一次 error。
 
 ## 工具查不出来的（必须人工交叉核对）
 
@@ -159,7 +178,7 @@ python3 <skill>/scripts/dbc_analyze.py export <dbc> --csv inventory.csv
 
 ## 示例
 
-`examples/demo.dbc`（20 报文 / 167 信号，0 error 0 warn）
-`examples/demo_broken.dbc`（同矩阵埋 9 类缺陷，故意 GBK）
+`<skill>/examples/demo.dbc` —— 20 报文 / 167 信号，0 error 0 warn（仅 1 条 `STA-001` info）
+`<skill>/examples/demo_broken.dbc` —— 同矩阵埋 10 类缺陷（4 error / 4 warn / 2 info），故意 GBK
 
 两个文件都是虚构的，不含真实车型、供应商或人员信息。

@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "skills" / "dbc-matrix-audit" / "scripts" / "dbc_analyze.py"
-DEMO = ROOT / "examples" / "demo.dbc"
+DEMO = ROOT / "skills" / "dbc-matrix-audit" / "examples" / "demo.dbc"
 
 spec = importlib.util.spec_from_file_location("dbc_analyze_diff", SCRIPT)
 assert spec and spec.loader

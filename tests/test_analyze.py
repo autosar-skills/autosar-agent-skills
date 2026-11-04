@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "skills" / "dbc-matrix-audit" / "scripts" / "dbc_analyze.py"
-EXAMPLES = ROOT / "examples"
+EXAMPLES = ROOT / "skills" / "dbc-matrix-audit" / "examples"
 
 spec = importlib.util.spec_from_file_location("dbc_analyze", SCRIPT)
 assert spec and spec.loader
@@ -255,6 +255,44 @@ class TestCliSurface(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestExampleExpectations(unittest.TestCase):
+    """The numbers SKILL.md promises about the bundled examples.
+
+    docs claiming "0 error" or "N defect classes" is exactly the kind of
+    statement that silently rots when a check is added, so assert it here.
+    """
+
+    def _lint(self, path):
+        code, out = run(["lint", str(path), "--json"])
+        payload = json.loads(out)
+        findings = payload["findings"] if isinstance(payload, dict) else payload
+        return code, findings
+
+    def test_demo_is_clean(self):
+        code, findings = self._lint(EXAMPLES / "demo.dbc")
+        errors = [f for f in findings if f["severity"] == "error"]
+        warns = [f for f in findings if f["severity"] == "warn"]
+        self.assertEqual(code, 0)
+        self.assertEqual(errors, [], "demo.dbc must have no errors")
+        self.assertEqual(warns, [], "demo.dbc must have no warnings")
+
+    def test_broken_covers_ten_codes(self):
+        """SKILL.md claims 10 defect classes; keep that claim honest."""
+        _, findings = self._lint(EXAMPLES / "demo_broken.dbc")
+        codes = {f["code"] for f in findings}
+        self.assertEqual(len(codes), 10, f"expected 10 distinct codes, got {sorted(codes)}")
+        expected = {"ENC-001", "BIT-001", "RNG-001", "DLC-001", "ENU-001",
+                    "SYM-001", "TYP-001", "DUP-001", "STA-001", "NOD-001"}
+        self.assertEqual(codes, expected)
+
+    def test_broken_severity_split(self):
+        """SKILL.md says 4 error / 4 warn / 2 info."""
+        _, findings = self._lint(EXAMPLES / "demo_broken.dbc")
+        import collections
+        c = collections.Counter(f["severity"] for f in findings)
+        self.assertEqual(dict(c), {"error": 4, "warn": 4, "info": 2})
 
 
 class TestDocConsistency(unittest.TestCase):

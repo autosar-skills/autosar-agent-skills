@@ -4,10 +4,10 @@
 
 Two files are produced:
 
-  examples/demo.dbc          a clean, synthetic CAN FD matrix for a fictional
+  skills/dbc-matrix-audit/examples/demo.dbc          a clean, synthetic CAN FD matrix for a fictional
                              auxiliary control node pair. Passes lint with no
                              errors and no warnings.
-  examples/demo_broken.dbc   the same matrix with nine deliberate defects, one
+  skills/dbc-matrix-audit/examples/demo_broken.dbc   the same matrix with nine deliberate defects, one
                              per check family, so the linter has something to
                              find.
 
@@ -27,7 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-OUT_DIR = Path(__file__).resolve().parent.parent / "examples"
+OUT_DIR = (Path(__file__).resolve().parent.parent
+           / "skills" / "dbc-matrix-audit" / "examples")
 
 NODES = ["ACM_A", "ACM_B", "RCM"]
 
