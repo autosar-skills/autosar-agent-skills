@@ -10,6 +10,9 @@ AUTOSAR 相关 Agent Skill 合集。每个 skill 自包含、可直接被 AI Age
 |---|---|---|
 | [dbc-matrix-audit](skills/dbc-matrix-audit/) | DBC 通信矩阵审计：位域重叠、越界、左右不对称、命名漂移、GBK 编码 | **无** |
 
+已上架 Agensi 市场（`DBC Matrix Audit`，免费，审核中）。上架用的英文包由
+`tools/pack_marketplace.py` 从本仓库生成，可复现出与提交版本字节一致的 zip。
+
 ## dbc-matrix-audit
 
 DBC 通信矩阵的静态审计器。11 类结构检查 + **两版差异对比** + 实帧解码 + CSV 导出，**纯标准库**。
@@ -156,14 +159,29 @@ openclaw skills info dbc-matrix-audit                    # 确认 Ready
 
 ```
 skills/dbc-matrix-audit/
-├── SKILL.md                  agent 执行手册（模式判定 / 流程 / 汇报格式）
+├── SKILL.md                  agent 执行手册（中文，模式判定 / 流程 / 汇报格式）
 ├── scripts/dbc_analyze.py    核心实现（单文件，标准库）
 ├── examples/                 合成示例（干净 / 埋坑），随 skill 一起分发
 └── references/               规则细节、编码问题、DBC 语法笔记
 tools/gen_demo_dbc.py         示例生成器
+tools/pack_marketplace.py     市场打包器（可复现，带结构校验）
 tests/                        61 个单元测试（含 diff 专项）
+packaging/agensi/             上架物料：英文 SKILL.md / README 覆盖层、文案存档、logo
 CHANGELOG.md                  版本变更记录
+dist/                         构建产物（gitignored，用上面两个脚本重新生成）
 ```
+
+### 市场打包
+
+```bash
+python3 tools/pack_marketplace.py           # → dist/agensi/dbc-matrix-audit.zip
+python3 tools/pack_marketplace.py --check   # 只校验不落盘
+```
+
+`packaging/<market>/` 里的 `SKILL.md` / `README.md` 会覆盖仓库中的中文版，其余文件从
+`skills/<name>/` 取。打包器剔除 `__pycache__`、二进制、隐藏文件和软链，并校验
+「单一顶层文件夹 + SKILL.md 在其根 + 必须有 README」，不满足直接失败。
+条目排序 + 固定时间戳，重复构建字节一致。
 
 ## 许可
 
