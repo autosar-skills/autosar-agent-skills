@@ -1,0 +1,22 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# test / tooling
+.pytest_cache/
+.coverage
+htmlcov/
+
+# generated artefacts (regenerate with `python tools/gen_demo_dbc.py`)
+examples/*_utf8.dbc
+*.inventory.csv
+
+# editors
+.vscode/
+.idea/
+.DS_Store

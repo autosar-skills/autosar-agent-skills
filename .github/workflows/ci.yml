@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: lint the clean example (expect zero errors)
+        run: |
+          python skills/dbc-matrix-audit/scripts/dbc_analyze.py \
+            lint examples/demo.dbc --min-severity warn
+
+      - name: lint the broken example (expect failure, by design)
+        run: |
+          if python skills/dbc-matrix-audit/scripts/dbc_analyze.py \
+               lint examples/demo_broken.dbc > /dev/null 2>&1; then
+            echo "demo_broken.dbc unexpectedly passed lint" >&2
+            exit 1
+          fi
+          echo "ok: broken example was rejected as expected"
+
+      - name: examples are reproducible
+        run: |
+          cp examples/demo.dbc /tmp/demo.before
+          python tools/gen_demo_dbc.py
+          diff -q /tmp/demo.before examples/demo.dbc
