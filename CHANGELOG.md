@@ -7,6 +7,57 @@
 
 ---
 
+## [1.2.0] — 2026-11-04
+
+### 变更
+
+**`SKILL.md` 重写为执行手册，不再是说明文档。**
+
+旧版是一份写给人的 README：讲「为什么自己写解析器」「为什么这些检查值得做」，
+但 agent 真正需要的是「拿到文件之后按什么顺序做什么」。两者读者不同，混在一起两边都不好用。
+
+新版是 Step 0–4 的运行手册：
+
+| 步骤 | 内容 |
+|---|---|
+| Step 0 | 模式判定 —— 用户原话 → 子命令，不用反问 |
+| Step 1 | 先跑 `info` 探规模，信号 > 500 时不裸跑 `signals` |
+| Step 2 | `ENC-001` 时先转码再重跑，否则注释类判断全部失效 |
+| Step 3 | 各子命令的调用方式与顺序陷阱（如 `diff` 参数顺序） |
+| Step 4 | 输出解读：error 必须翻译成现象，汇报固定三段 |
+
+新增两节旧版没有的内容：
+
+- **「工具查不出来的」** —— 节点声明但零发送、同名报文 CAN ID 不一致、版本记录与文件不符、
+  changelog 声称新增但文件里没有、属性被批量填同一个值。这些 `lint` 永远报不出来，
+  必须靠 `diff` + `messages` 人工交叉核对。明确写进去，避免下次分析时以为「lint 绿了就没事」。
+- **「error 翻译成人话」对照表** —— 用户不关心 `BIT-001` 这个编号，
+  关心「为什么我的灯不亮」。
+
+删掉的：cantools 对比表、四类事故的小故事、退出码重复说明（`--help` 已有）。
+这些内容 README 里都有，留在 SKILL.md 只是让每次加载多花 token。
+
+### 修复
+
+**frontmatter 有 6 个无效字段。**
+
+`slug` / `displayName` / `summary` / `version` / `tags` / `author` 全部不被 OpenClaw 读取
+（`openclaw skills list --json` 只输出 `name` + `description`），
+而且会让官方 `quick_validate.py` 直接报错：
+
+```
+Unexpected key(s) in SKILL.md frontmatter: author, displayName, slug, summary, tags, version.
+Allowed properties are: allowed-tools, description, homepage, license, metadata, name, user-invocable
+```
+
+现在只保留 `name` / `description` / `license`，其余移入 `metadata:`（允许的扩展位置）。
+校验通过：`Skill is valid!`
+
+`description` 同时收紧了：原来把 11 条检查逐条列了一遍，那不是触发所需的信息，
+而是 `references/checks.md` 的内容。现在只留触发词。
+
+---
+
 ## [1.1.0] — 2026-11-04
 
 ### 新增

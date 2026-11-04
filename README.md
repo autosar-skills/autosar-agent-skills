@@ -130,7 +130,16 @@ pip install -e .
 
 ## 作为 Agent Skill 使用
 
-`skills/<name>/SKILL.md` 遵循通用 AgentSkill 格式（YAML frontmatter + 使用说明）。把整个 `skills/<name>/` 目录放到 agent 的 skill 路径下即可，脚本通过相对路径 `scripts/dbc_analyze.py` 调用。
+`skills/<name>/SKILL.md` 遵循通用 AgentSkill 格式。把整个 `skills/<name>/` 目录放到 agent 的 skill 路径下即可，脚本通过相对路径 `scripts/dbc_analyze.py` 调用。
+
+SKILL.md 是**给 agent 执行的运行手册**（模式判定 → 执行顺序 → 输出解读），不是给人读的说明文档；
+本 README 才是给人看的。两者分工：
+
+| 位置 | 读者 | 内容 |
+|---|---|---|
+| `README.md` | 人 | 为什么这么设计、规则含义、示例输出 |
+| `SKILL.md` | agent | Step 0–4 执行流程、命令、汇报格式 |
+| `references/checks.md` | 按需加载 | 每条规则的判定细节与误报场景 |
 
 OpenClaw 用户：
 
@@ -147,7 +156,7 @@ openclaw skills info dbc-matrix-audit                    # 确认 Ready
 
 ```
 skills/dbc-matrix-audit/
-├── SKILL.md                  使用说明与检查项清单
+├── SKILL.md                  agent 执行手册（模式判定 / 流程 / 汇报格式）
 ├── scripts/dbc_analyze.py    核心实现（单文件，标准库）
 └── references/               规则细节、编码问题、DBC 语法笔记
 examples/                     合成示例（干净 / 埋坑）

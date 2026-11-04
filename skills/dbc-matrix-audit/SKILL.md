@@ -1,149 +1,165 @@
 ---
 name: dbc-matrix-audit
-slug: dbc-matrix-audit
-displayName: DBC 通信矩阵审计
-summary: 审计 CAN / CAN FD DBC 通信矩阵：位域重叠、信号越界、值表缺失、左右不对称、命名漂移、GBK 编码；支持两版差异对比。零依赖。
 description: |
-  审计和检查 DBC 通信矩阵文件。当用户提到「分析这个 dbc」「看看这个通信矩阵」「dbc 检查」「CAN 矩阵审计」「信号有没有重叠」「左右不对称」「dbc 乱码」「GBK 编码」「解码这帧报文」时使用。
-  覆盖 11 类结构检查：GBK/UTF-8 编码、位域重叠、信号越界、DLC 非法、ENUM 属性写成数字、左右/AB 对称性、命名大小写漂移、跨报文重名、启动值缺失、发送节点未声明、短信号缺值表。
-  Audit DBC communication matrices (CAN / CAN FD). Detects bit-field overlaps, out-of-range signals, illegal DLC, enum attributes written as numbers, left/right asymmetry, case-only spelling drift, duplicate signal names, missing start values, undeclared transmitters, and GBK-encoded comments. Also decodes raw frames and exports the signal inventory.
-  支持两版 DBC 差异对比（`diff` 子命令）：报文增删改、CAN ID 迁移、信号位移、缩放系数变更、值表变更、CRC DataID 变更。当用户提到「对比两版 dbc」「版本差异」「升级改了什么」「两个 dbc 有什么不同」时使用。
-  Compare two DBC revisions for breaking changes: renames, CAN id moves, bit geometry shifts, scaling, value tables, and CRC data ids.
-version: 1.1.0
-author: autosar-agent-skills
+  审计、检查、对比 CAN / CAN FD 的 DBC 通信矩阵。触发：分析这个 dbc、通信矩阵、dbc 检查、CAN 矩阵审计、信号重叠、信号越界、左右不对称、命名漂移、dbc 乱码、GBK 编码、解码这帧报文、值表缺失、对比两版 dbc、版本差异、升级改了什么、两个 dbc 有什么不同。
+  Audit, lint and diff CAN / CAN FD DBC communication matrices: bit-field overlaps, out-of-range signals, illegal DLC, enum attributes written as numbers, left/right asymmetry, case-only spelling drift, duplicate signal names, missing start values, undeclared transmitters, GBK-encoded comments, raw frame decoding, signal inventory export, and two-revision comparison (renames, CAN id moves, geometry shifts, scaling, value tables, CRC data ids).
 license: MIT
-tags: [autosar, can, canfd, dbc, communication-matrix, lint, embedded]
+metadata:
+  version: 1.2.0
+  author: autosar-agent-skills
+  tags: [autosar, can, canfd, dbc, communication-matrix, lint, embedded]
 ---
 
 # DBC Matrix Audit
 
-DBC 通信矩阵的静态审计工具。**纯标准库**，不依赖 cantools、不依赖任何第三方包。
-
-## 为什么自己写解析器
-
-主流 DBC 库（含 cantools）解析时**丢掉了审计最需要的东西**：
-
-| 数据 | cantools `.messages` | 本工具 |
-|---|---|---|
-| 报文周期 `GenMsgCycleTime` | ✗ | ✓ |
-| 值表 `VAL_`（枚举文字含义） | 部分 | ✓ |
-| 注释 `CM_` | ✗ | ✓ |
-| 报文/信号属性 `BA_` | ✗ | ✓ |
-
-没有这四类，就没法判断「这个 2 bit 信号到底代表什么」「这条报文多久发一次」。
-
-## 用法
+零依赖，纯标准库。全部子命令走同一个脚本：
 
 ```bash
-# 概览
-python dbc_analyze.py info matrix.dbc
-
-# 报文清单
-python dbc_analyze.py messages matrix.dbc
-
-# 单个报文的信号明细（含值表、注释、范围）
-python dbc_analyze.py signals matrix.dbc --frame 0x1D2
-
-# 结构审计（有 error 时退出码 1，可直接接 CI）
-python dbc_analyze.py lint matrix.dbc
-python dbc_analyze.py lint matrix.dbc --json
-python dbc_analyze.py lint matrix.dbc --min-severity warn
-
-# 解一帧真实报文
-python dbc_analyze.py decode matrix.dbc 0x1D2 1234052a00000000
-
-# 导出信号总表（Excel 可直接打开）
-python dbc_analyze.py export matrix.dbc --csv inventory.csv
-
-# GBK -> UTF-8
-python dbc_analyze.py fix-encoding matrix.dbc matrix_utf8.dbc
-
-# 对比两版（positional 参数是基线/旧版）
-python dbc_analyze.py diff old.dbc new.dbc
-python dbc_analyze.py diff old.dbc new.dbc --json
-python dbc_analyze.py diff old.dbc new.dbc --min-severity warn
+python3 <skill>/scripts/dbc_analyze.py <subcommand> ...
 ```
 
-## 检查项清单
+`<skill>` 是本文件所在目录。仓库内是 `skills/dbc-matrix-audit/`。
 
-| 代码 | 严重度 | 说明 |
-|---|---|---|
-| `ENC-001` | error | 文件不是 UTF-8（典型是 GBK 中文注释） |
-| `BIT-001` | error | 同一帧内两个信号占用同一位 |
-| `RNG-001` | error | 信号超出报文长度 |
-| `DLC-001` | error | 非法 DLC（CAN FD 只有 0-8/12/16/20/24/32/48/64） |
-| `ENU-001` | warn | ENUM 类型属性被赋值为数字索引 |
-| `SYM-001` | warn | 左右（L/R、A/B、FL/FR…）信号集不对称 |
-| `TYP-001` | warn | 去掉左右标识后，同一个信号拼写不一致（`FctSt` vs `Fctst`） |
-| `DUP-001` | warn | 信号名跨报文重复 |
-| `STA-001` | info | 大量信号未设 `GenSigStartValue` |
-| `NOD-001` | info | 发送节点未在 `BU_` 中声明 |
-| `VAL-001` | info | 短信号（≤4 bit）没有值表 |
+## Step 0 — 判定模式
 
-每项规则的判定细节和**误报场景**见 `references/checks.md`。
-复用信号（multiplexed）尚未感知，已知局限见该文件末尾。
+按用户原话直接选，**不要反问**。命中多个时按本表从上到下执行。
 
-## 版本对比（diff）
+| 用户提到 | 跑 |
+|---|---|
+| 概览、几帧、多少信号、有哪些节点 | `info` |
+| 报文清单、有哪些帧、谁发的 | `messages` |
+| 某个帧的信号、0x1D2 里有什么、什么含义 | `signals --frame` |
+| 检查、审计、审一下、有没有问题、帮我看下 | `lint` |
+| 对比、两版、升级改了什么、差异、有什么不同 | `diff` |
+| 解这帧、这串字节、0x... 是什么值 | `decode` |
+| 导出、给供应商、Excel、台账 | `export --csv` |
+| 乱码、GBK、中文变问号、打开是乱码 | `fix-encoding` |
 
+「检查」和「对比」同时出现 → **先 `diff`**。跨版本差异比单版静态缺陷更紧急：已经上线的东西变了，比还没上线的东西有瑕疵严重。
+
+## Step 1 — 先探规模
+
+```bash
+python3 <skill>/scripts/dbc_analyze.py info <dbc>
 ```
-python dbc_analyze.py diff <基线/旧> <目标/新>
+
+拿到报文数 / 信号数 / 节点数 / 总线负载。**信号数 > 500 时不要裸跑 `signals`**，用 `--frame` 或 `export` 收窄。
+
+## Step 2 — 编码先于一切
+
+`lint` 报 `ENC-001`（不是 UTF-8）时，**先转码再重跑 lint**：
+
+```bash
+python3 <skill>/scripts/dbc_analyze.py fix-encoding <dbc> <dbc>_utf8.dbc
+python3 <skill>/scripts/dbc_analyze.py lint <dbc>_utf8.dbc
 ```
 
-| 代码 | 严重度 | 说明 |
-|---|---|---|
-| `DIF-GEO` | error | 信号位定义变了（起始位 / 长度 / 字节序 / 符号） |
-| `DIF-DLC` | error | 报文长度变了 |
-| `DIF-REN` | error | 报文 / 信号 / 节点重命名 —— 按旧名查值的代码会静默取不到 |
-| `DIF-ID` | error | 同名报文换了 CAN ID —— 路由表和过滤器仍指向旧地址 |
-| `DIF-CRC` | error | 校验和注释里的 DataID 变了 —— 接收方会拒收整帧 |
-| `DIF-DEL` | warn | 报文或信号被删除 |
-| `DIF-SCL` | warn | 系数 / 偏移变了 —— 数值静默偏移 |
-| `DIF-RNG` | warn | 最小值 / 最大值 / 单位变了 |
-| `DIF-VAL` | warn | 值表增删或改标签 |
-| `DIF-CYC` | warn | 周期变了 |
-| `DIF-TX` | warn | 发送节点变了 |
-| `DIF-TYP` | warn | 发送类型变了 |
-| `DIF-ADD` | info | 新增报文或信号 |
-| `DIF-CMT` | info | 仅注释变更 |
+原因：GBK 文件里所有 `CM_` 注释是坏字节。位域类检查仍有效，但**依赖注释的判断会失效**——包括 CRC DataID 提取、信号用途说明。不转码就解读输出，会把「注释读不到」误判成「注释缺失」，然后错误地建议用户补注释。
 
-**两个容易漏判的场景做了专门处理：**
+后续所有命令都使用转码后的文件。
 
-1. **同名报文换 ID**。只按 ID 比对会退化成「删一条 + 加一条」，真正的原因（地址变了）被埋在中间。工具先按名字配对，报 `DIF-ID`，并抑制那条误导性的增删。
-2. **CRC DataID 变更**。它藏在信号的 `CM_` 注释里（`CRC16 checksum (DataID: 0x61D2)`），普通注释比对只会当 `info`。工具用正则提取 DataID，一变就报 `error` —— 因为接收方校验 CRC 会**拒收该帧全部内容**，表现是「模块没反应」而不是报错。
+## Step 3 — 执行
 
-信号重命名按**位定义**配对（名字正是变了的东西，只能靠位置锚定），所以 `Bus_Off_Count` → `Bus_Off_Cnt` 会识别为 `DIF-REN` 而不是一删一加。
+### lint
 
-`diff` 的退出码：有 `error` 级差异返回 1，`--no-fail` 强制返回 0。
+```bash
+python3 <skill>/scripts/dbc_analyze.py lint <dbc>
+python3 <skill>/scripts/dbc_analyze.py lint <dbc> --json          # 脚本消费
+python3 <skill>/scripts/dbc_analyze.py lint <dbc> --min-severity warn
+```
 
-## 为什么这些检查值得做
+有 error 时退出码 1（可直接接 CI）。
 
-通信矩阵的错**不会在编译期暴露**，只会在联调时以「某个灯不亮」「某帧解出来是负数」的形式出现，而且往往已经跨了两个团队。四类最常见的真实事故：
+### diff
 
-1. **GBK 编码** —— Vector 工具链能忍，Python 脚本一读就崩，CI 里才炸。
-2. **位域重叠** —— 两个信号抢同一位，收发双方都「正常」跑，数值永远错。
-3. **左右不对称** —— 一侧多一个信号，另一侧代码按名字取值拿到默认 0。
-4. **大小写漂移** —— `FLM_L_AFSFctst` vs `FLM_R_AFSFctSt`，按 A 侧名字写的代码在 B 侧取不到值。
+```bash
+python3 <skill>/scripts/dbc_analyze.py diff <基线/旧> <目标/新>
+```
+
+第一个 positional 是**基线**。顺序反了所有方向的结论都会反（`0x457 -> 0x46B` 变成 `0x46B -> 0x457`）。
+
+反向对比一次可以验证结论是否对称——两边 error 数应当一致。不一致说明有单侧新增/删除，值得单独看。
+
+### decode
+
+```bash
+python3 <skill>/scripts/dbc_analyze.py decode <dbc> 0x1D2 1234052a00000000
+```
+
+hex 长度可短于 DLC（缺的补 0），不能长于 DLC。
+
+### export
+
+```bash
+python3 <skill>/scripts/dbc_analyze.py export <dbc> --csv inventory.csv
+```
+
+用户说「发给供应商」时用这个，不要手写表格。
+
+## Step 4 — 解读与汇报
+
+**error 必须翻译成现象**，不能只报代码。用户不关心 `BIT-001` 这个编号，关心「为什么我的灯不亮」。
+
+| 代码 | 说成人话 |
+|---|---|
+| `BIT-001` | 两个信号抢同一位，收发双方都正常跑，但数值永远错 |
+| `SYM-001` | 一侧少信号，另一侧代码按名字取值拿到默认 0 |
+| `TYP-001` | 按 A 侧名字写的代码在 B 侧取不到值 |
+| `ENC-001` | Vector 能忍，Python/CI 一读就崩 |
+| `DIF-CRC` | 接收方校验失败会拒收整帧，现象是「模块没反应」而不是报错 |
+| `DIF-ID` | 路由表和过滤器还指向旧地址，报文收不到 |
+| `DIF-REN` | 按旧名查值的代码静默取不到，不报错 |
+
+**汇报固定三段**：
+
+1. **结论** —— 几个 error、能不能上线
+2. **证据** —— 关键 error 原样贴工具输出
+3. **待确认** —— 工具查不出、必须人工看的部分（见下）
+
+`warn` 按类型归并批量报（「26 条信号删除，集中在 DLP 投影功能」），不要逐条念。
+`info` 一句带过或省略。
+
+## 工具查不出来的（必须人工交叉核对）
+
+`lint` 只看单文件结构。以下问题只能靠 `diff` + `messages` 对照人工判断，**发现不了不等于没有**：
+
+- **节点声明了但零发送** —— `BU_` 里有，`BO_` 里从没作为发送方出现
+- **同名报文 CAN ID 不一致** —— 两份矩阵对同一帧给了不同地址
+- **版本记录与实际不符** —— changelog 只到 V1.2，文件名却是 V1.4
+- **changelog 声称新增但文件里没有** —— 记录与实际脱节
+- **属性被批量填同一个值** —— 如 `GenSigASIL` 全部 = 5，不是真实安全分析
+
+确认「要不要报」的判断标准：**凡是会导致联调时现象异常、但编译期不报错的，都报。**
+
+## 检查码
+
+**error**：`ENC-001` `BIT-001` `RNG-001` `DLC-001`
+**warn**：`ENU-001` `SYM-001` `TYP-001` `DUP-001`
+**info**：`STA-001` `NOD-001` `VAL-001`
+
+**diff error**：`DIF-GEO` 位定义变 / `DIF-DLC` 长度变 / `DIF-REN` 重命名 / `DIF-ID` CAN ID 迁移 / `DIF-CRC` DataID 变
+**diff warn**：`DIF-DEL` 删除 / `DIF-SCL` 系数偏移 / `DIF-RNG` 范围单位 / `DIF-VAL` 值表 / `DIF-CYC` 周期 / `DIF-TX` 发送节点 / `DIF-TYP` 发送类型
+**diff info**：`DIF-ADD` 新增 / `DIF-CMT` 注释
+
+判定细节、误报场景、已知局限 → `references/checks.md`
 
 ## 退出码
 
-| 码 | 含义 |
-|---|---|
-| 0 | 无 error（可能仍有 warn / info） |
-| 1 | 存在 error |
-| 2 | 参数或文件问题 |
+`0` 无 error ｜ `1` 存在 error ｜ `2` 参数或文件问题
 
-`--no-fail` 可强制返回 0，适合「先跑起来看看」的场景。
-
-## 示例文件
-
-- `examples/demo.dbc` —— 合成的干净矩阵（20 报文 / 167 信号），0 error 0 warn
-- `examples/demo_broken.dbc` —— 同一矩阵埋了 9 类缺陷，`lint` 会全部报出
-
-两个文件都是虚构的，不含任何真实车型、供应商或人员信息。由 `tools/gen_demo_dbc.py` 生成，位分配由程序计算而非手工填写，因此干净文件中结构上不可能重叠。
+`--no-fail` 强制返回 0。
 
 ## 局限
 
-- 只读 DBC，不写回（除 `fix-encoding` 转码）
-- 不解 `.arxml` / `.ldf` / `.kcd`，只处理 DBC
-- 对称性检查是启发式：需要报文名形如 `X_L_Y` / `X_R_Y` 或 `X_A_Y` / `X_B_Y`
+- 只读；除 `fix-encoding` 外不写回
+- 只处理 DBC，不解 `.arxml` / `.ldf` / `.kcd`
+- 对称性检查靠命名启发式，需要报文名形如 `X_L_Y` / `X_R_Y` 或 `X_A_Y` / `X_B_Y`
 - 不校验 CRC / rolling counter 算法，只检查它们是否存在
+- 复用信号（multiplexed）未感知，含 mux 的矩阵会有 `BIT-001` 误报
+
+## 示例
+
+`examples/demo.dbc`（20 报文 / 167 信号，0 error 0 warn）
+`examples/demo_broken.dbc`（同矩阵埋 9 类缺陷，故意 GBK）
+
+两个文件都是虚构的，不含真实车型、供应商或人员信息。
