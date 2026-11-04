@@ -44,7 +44,9 @@ python3 scripts/dbc_analyze.py lint examples/demo_broken.dbc   # expect 10 defec
 
 `demo.dbc` is clean by construction: bit assignments are computed by a generator, not
 typed by hand, so overlapping signals are structurally impossible. `demo_broken.dbc` is
-the same matrix with deliberately planted defects and a GBK encoding.
+the same matrix with deliberately planted defects and a GBK encoding — 166 signals
+rather than 167, because planting the asymmetry, spelling-drift and duplicate-name
+defects requires the signal list to actually change.
 
 ## Typical use
 
@@ -79,7 +81,7 @@ dbc-matrix-audit/
 │   └── encoding.md             GBK/UTF-8 handling
 └── examples/
     ├── demo.dbc                synthetic clean matrix
-    ├── demo_broken.dbc         same matrix, 10 defect classes
+    ├── demo_broken.dbc         same matrix, 10 defect classes (166 signals)
     └── README.md
 ```
 

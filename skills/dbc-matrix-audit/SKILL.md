@@ -179,6 +179,8 @@ GBK 原文件 = 漏报了一次 error。
 ## 示例
 
 `<skill>/examples/demo.dbc` —— 20 报文 / 167 信号，0 error 0 warn（仅 1 条 `STA-001` info）
-`<skill>/examples/demo_broken.dbc` —— 同矩阵埋 10 类缺陷（4 error / 4 warn / 2 info），故意 GBK
+`<skill>/examples/demo_broken.dbc` —— 同矩阵埋 10 类缺陷（4 error / 4 warn / 2 info），故意 GBK。
+信号数比干净版少 1（166 vs 167）：埋 `TYP-001`/`SYM-001`/`DUP-001` 必须真的增删信号，
+否则那三个检查不会触发。细节见 `examples/README.md`。
 
 两个文件都是虚构的，不含真实车型、供应商或人员信息。

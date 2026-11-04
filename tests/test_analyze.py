@@ -295,6 +295,109 @@ class TestExampleExpectations(unittest.TestCase):
         self.assertEqual(dict(c), {"error": 4, "warn": 4, "info": 2})
 
 
+class TestPackagedDocAccuracy(unittest.TestCase):
+    """The docs that ship inside the package must be true, and self-contained.
+
+    Two failures this catches, both found in the Agensi submission:
+
+    1. `examples/README.md` claimed "9 defect classes ... 4 error 4 warn" while the
+       fixtures produce 10 codes at 4/4/2. The code-side assertions above were correct;
+       the shipped prose was not, so a buyer counting the findings got a mismatch.
+    2. It also told the reader to run `python tools/gen_demo_dbc.py`, but `tools/` is
+       not in the package. Every path a shipped doc names must resolve inside the
+       package, or the doc is instructing the buyer to do something that fails.
+
+    The package is `skills/<name>/` plus the `packaging/<market>/` overlay, so that is
+    exactly what is checked.
+    """
+
+    SKILL_DIR = ROOT / "skills" / "dbc-matrix-audit"
+    OVERLAY = ROOT / "packaging" / "agensi"
+
+    # Any relative path, e.g. scripts/x.py, tools/y.py, docs/z.md.
+    PATH_REF = re.compile(r"(?<![\w/.-])([A-Za-z_][\w.-]*/[\w.-]+\.[A-Za-z0-9]{1,5})(?![\w/.-])")
+
+    # Fenced blocks whose content is meant to be executed or acted on.
+    CODE_BLOCK = re.compile(r"```(?:bash|sh|console|shell)?\n(.*?)```", re.S)
+
+    def _shipped_docs(self):
+        """Docs that end up inside the zip: skill dir (minus dirs) + overlay .md."""
+        docs = {p.relative_to(self.SKILL_DIR).as_posix(): p
+                for p in self.SKILL_DIR.rglob("*.md")}
+        for p in self.OVERLAY.glob("*.md"):
+            if p.name != "LISTING.md":          # operator copy, not shipped
+                docs[p.name] = p
+        return docs
+
+    def test_commands_in_shipped_docs_resolve_inside_the_package(self):
+        """Anything a buyer is told to run must exist in the package.
+
+        Prose may name a path that lives only in the repo — that is how the
+        examples README explains where the generator is, with a URL next to it.
+        A fenced block is different: it is an instruction. So only block contents
+        are checked, which keeps `see tools/gen_demo_dbc.py in the repo` legal
+        while rejecting `python tools/gen_demo_dbc.py` as a step to follow.
+        """
+        missing = []
+        for name, path in self._shipped_docs().items():
+            text = path.read_text(encoding="utf-8")
+            for block in self.CODE_BLOCK.findall(text):
+                block = re.sub(r"https?://\S+", "", block)
+                # Docs write `<skill>/scripts/...`; the prefix is a variable, not a
+                # path segment. Strip it or the leading slash defeats the word
+                # boundary in PATH_REF and the whole check silently no-ops.
+                block = block.replace("<skill>/", "")
+                for ref in self.PATH_REF.findall(block):
+                    candidates = [self.SKILL_DIR / ref, path.parent / ref]
+                    if not any(c.exists() for c in candidates):
+                        missing.append(f"{name} runs a command naming {ref}")
+        self.assertEqual(missing, [],
+                         "shipped docs instruct the buyer to use paths that are not in "
+                         "the package:\n  " + "\n  ".join(missing))
+
+    def test_the_path_check_actually_sees_the_skill_md_commands(self):
+        """Guard the guard: if the path check silently matches nothing it is dead.
+
+        SKILL.md addresses every path as `<skill>/scripts/...`. An earlier version of
+        PATH_REF missed all of them because the `/` after `<skill>` failed the
+        lookbehind, so the check passed no matter what the docs said.
+        """
+        text = (self.SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        seen = set()
+        for block in self.CODE_BLOCK.findall(text):
+            block = re.sub(r"https?://\S+", "", block).replace("<skill>/", "")
+            seen.update(self.PATH_REF.findall(block))
+        self.assertTrue(seen, "path check found no references in SKILL.md — it is dead")
+        self.assertIn("scripts/dbc_analyze.py", seen)
+        self.assertIn("examples/demo.dbc", seen)
+
+    def test_example_readme_numbers_match_reality(self):
+        text = (self.SKILL_DIR / "examples" / "README.md").read_text(encoding="utf-8")
+
+        def info_signals(dbc_name):
+            code, out = run(["info", str(EXAMPLES / dbc_name)])
+            self.assertEqual(code, 0)
+            m = re.search(r"^signals\s+(\d+)", out, re.M)
+            self.assertIsNotNone(m, f"no signal count in info output:\n{out}")
+            return int(m.group(1))
+
+        self.assertEqual(info_signals("demo.dbc"), 167)
+        self.assertEqual(info_signals("demo_broken.dbc"), 166)
+
+        # the counts the README states must be the counts the tool produces
+        self.assertIn("167 signals", text)
+        self.assertIn("166 signals", text)
+        self.assertIn("10 defect classes", text)
+        self.assertIn("4 error, 4 warn, 2 info", text)
+
+    def test_example_readme_does_not_claim_nine_defects(self):
+        """Guard the exact regression: the old text said 9."""
+        text = (self.SKILL_DIR / "examples" / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn("9 类缺陷", text)
+        self.assertNotIn("9 defect", text.lower())
+        self.assertNotIn("9 defect", text.lower())
+
+
 class TestDocConsistency(unittest.TestCase):
     """Documentation must not advertise codes the code cannot produce.
 

@@ -176,6 +176,9 @@ Detection detail, false-positive notes and known limits: `references/checks.md`
 ## Examples
 
 `examples/demo.dbc` — 20 messages / 167 signals, 0 error 0 warn
-`examples/demo_broken.dbc` — the same matrix with 10 defect classes planted, deliberately GBK
+`examples/demo_broken.dbc` — the same matrix with 10 defect classes planted, deliberately GBK.
+It carries 166 signals rather than 167: planting `TYP-001`, `SYM-001` and `DUP-001`
+requires the signal list to actually change, otherwise those checks would not fire.
+See `examples/README.md` for which edit plants which defect.
 
 Both are synthetic and contain no real vehicle, supplier or personal data.
