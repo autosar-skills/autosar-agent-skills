@@ -258,25 +258,37 @@ if __name__ == "__main__":
 
 
 class TestDocConsistency(unittest.TestCase):
-    """Documentation must not advertise check codes the code cannot produce."""
+    """Documentation must not advertise codes the code cannot produce.
+
+    Covers both families: `XXX-001` lint codes and `DIF-XXX` diff codes.
+    """
+
+    # docs wrap codes in backticks; source writes them as string literals
+    DOC_LINT = re.compile(r"`([A-Z]{3}-\d{3})`")
+    DOC_DIFF = re.compile(r"`(DIF-[A-Z]{3})`")
+    SRC_LINT = re.compile(r'code="([A-Z]{3}-\d{3})"')
+    SRC_DIFF = re.compile(r'"(DIF-[A-Z]{3})",\s*DIF_SEVERITY')
+
+    def _pairs(self):
+        skill_md = (ROOT / "skills" / "dbc-matrix-audit" / "SKILL.md").read_text(encoding="utf-8")
+        source = SCRIPT.read_text(encoding="utf-8")
+        return [
+            ("lint", set(self.DOC_LINT.findall(skill_md)), set(self.SRC_LINT.findall(source))),
+            ("diff", set(self.DOC_DIFF.findall(skill_md)), set(self.SRC_DIFF.findall(source))),
+        ]
 
     def test_every_documented_code_is_implemented(self):
-        skill_md = (ROOT / "skills" / "dbc-matrix-audit" / "SKILL.md").read_text(encoding="utf-8")
-        documented = set(re.findall(r"`([A-Z]{3}-\d{3})`", skill_md))
-        self.assertTrue(documented, "no check codes found in SKILL.md")
-
-        source = SCRIPT.read_text(encoding="utf-8")
-        implemented = set(re.findall(r'code="([A-Z]{3}-\d{3})"', source))
-        missing = documented - implemented
-        self.assertEqual(missing, set(), f"documented but never emitted: {missing}")
+        for label, documented, implemented in self._pairs():
+            self.assertTrue(documented, f"no {label} codes found in SKILL.md")
+            missing = documented - implemented
+            self.assertEqual(missing, set(),
+                             f"{label}: documented but never emitted: {missing}")
 
     def test_every_implemented_code_is_documented(self):
-        skill_md = (ROOT / "skills" / "dbc-matrix-audit" / "SKILL.md").read_text(encoding="utf-8")
-        documented = set(re.findall(r"`([A-Z]{3}-\d{3})`", skill_md))
-        source = SCRIPT.read_text(encoding="utf-8")
-        implemented = set(re.findall(r'code="([A-Z]{3}-\d{3})"', source))
-        undocumented = implemented - documented
-        self.assertEqual(undocumented, set(), f"emitted but undocumented: {undocumented}")
+        for label, documented, implemented in self._pairs():
+            undocumented = implemented - documented
+            self.assertEqual(undocumented, set(),
+                             f"{label}: emitted but undocumented: {undocumented}")
 
 
 class TestDeterminism(unittest.TestCase):

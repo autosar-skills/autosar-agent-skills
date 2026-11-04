@@ -1052,6 +1052,372 @@ def cmd_fix_encoding(db: Database, args) -> int:
 
 
 # --------------------------------------------------------------------------
+# differential comparison
+# --------------------------------------------------------------------------
+
+@dataclass
+class DiffFinding:
+    code: str
+    severity: str
+    title: str
+    detail: str = ""
+    location: str = ""
+
+    def as_dict(self) -> dict:
+        return {
+            "code": self.code,
+            "severity": self.severity,
+            "title": self.title,
+            "detail": self.detail,
+            "location": self.location,
+        }
+
+
+DIF_SEVERITY = {
+    "DIF-GEO": "error",   # bit geometry moved: both ends must be rebuilt
+    "DIF-DLC": "error",   # payload size changed
+    "DIF-REN": "error",   # name or node list changed: lookups break silently
+    "DIF-ID":  "error",   # same frame, different CAN id: routing breaks
+    "DIF-CRC": "error",   # checksum DataID changed: every receiver rejects
+    "DIF-DEL": "warn",    # something disappeared
+    "DIF-SCL": "warn",    # factor / offset changed: values silently skewed
+    "DIF-RNG": "warn",    # min / max / unit changed
+    "DIF-VAL": "warn",    # value table changed
+    "DIF-CYC": "warn",    # cycle time changed: timing behaviour
+    "DIF-TX":  "warn",    # transmitter changed
+    "DIF-TYP": "warn",    # send type changed
+    "DIF-ADD": "info",    # new message / signal
+    "DIF-CMT": "info",    # comment only
+}
+
+#: A checksum comment usually carries the CRC data id, e.g.
+#: "CRC16 checksum (DataID: 0x61D2)". If that id moves, every receiver that
+#: validates the CRC rejects the frame -- a total communication failure that
+#: shows up as "the module ignores us" rather than as an error.
+RE_DATAID = re.compile(r"data\s*id\s*[:：]?\s*(0x[0-9A-Fa-f]+)", re.I)
+
+
+def _sig_geometry(sig: Signal) -> tuple:
+    """The parts of a signal definition that decide where its bits live."""
+    return (sig.start, sig.length, sig.byte_order, sig.is_signed)
+
+
+def _sig_scaling(sig: Signal) -> tuple:
+    return (sig.factor, sig.offset)
+
+
+def _sig_range(sig: Signal) -> tuple:
+    return (sig.minimum, sig.maximum, sig.unit)
+
+
+def _fmt_geometry(sig: Signal) -> str:
+    order = "motorola" if sig.byte_order == "motorola" else "intel"
+    sign = "-" if sig.is_signed else "+"
+    return f"{sig.start}|{sig.length}@{order}{sign}"
+
+
+def _short(text: str, limit: int = 60) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1] + "..."
+
+
+def _diff_signal(old: Signal, new: Signal, where: str) -> list[DiffFinding]:
+    out: list[DiffFinding] = []
+    if _sig_geometry(old) != _sig_geometry(new):
+        out.append(DiffFinding(
+            "DIF-GEO", DIF_SEVERITY["DIF-GEO"],
+            f"{new.name}: bit geometry changed",
+            f"{_fmt_geometry(old)}  ->  {_fmt_geometry(new)}",
+            where,
+        ))
+    if _sig_scaling(old) != _sig_scaling(new):
+        out.append(DiffFinding(
+            "DIF-SCL", DIF_SEVERITY["DIF-SCL"],
+            f"{new.name}: scaling changed",
+            f"factor {old.factor:g} -> {new.factor:g}, "
+            f"offset {old.offset:g} -> {new.offset:g}",
+            where,
+        ))
+    if _sig_range(old) != _sig_range(new):
+        bits = []
+        if old.minimum != new.minimum:
+            bits.append(f"min {old.minimum} -> {new.minimum}")
+        if old.maximum != new.maximum:
+            bits.append(f"max {old.maximum} -> {new.maximum}")
+        if old.unit != new.unit:
+            bits.append(f"unit '{old.unit}' -> '{new.unit}'")
+        out.append(DiffFinding(
+            "DIF-RNG", DIF_SEVERITY["DIF-RNG"],
+            f"{new.name}: range changed", ", ".join(bits), where,
+        ))
+    if old.value_table != new.value_table:
+        gone = set(old.value_table) - set(new.value_table)
+        came = set(new.value_table) - set(old.value_table)
+        changed = {k for k in set(old.value_table) & set(new.value_table)
+                   if old.value_table[k] != new.value_table[k]}
+        bits = []
+        if gone:
+            bits.append(f"{len(gone)} removed ({', '.join(str(k) for k in sorted(gone)[:4])})")
+        if came:
+            bits.append(f"{len(came)} added ({', '.join(str(k) for k in sorted(came)[:4])})")
+        if changed:
+            sample = sorted(changed)[0]
+            bits.append(f"{len(changed)} relabelled (e.g. {sample}: "
+                        f"'{old.value_table[sample]}' -> '{new.value_table[sample]}')")
+        out.append(DiffFinding(
+            "DIF-VAL", DIF_SEVERITY["DIF-VAL"],
+            f"{new.name}: value table changed", "; ".join(bits), where,
+        ))
+    if old.comment != new.comment:
+        old_id = RE_DATAID.search(old.comment)
+        new_id = RE_DATAID.search(new.comment)
+        if old_id and new_id and old_id.group(1).lower() != new_id.group(1).lower():
+            out.append(DiffFinding(
+                "DIF-CRC", DIF_SEVERITY["DIF-CRC"],
+                f"{new.name}: checksum data id changed",
+                f"{old_id.group(1)} -> {new_id.group(1)}. Every receiver that "
+                f"validates this CRC will reject the frame until it is rebuilt "
+                f"with the new id.",
+                where,
+            ))
+        else:
+            out.append(DiffFinding(
+                "DIF-CMT", DIF_SEVERITY["DIF-CMT"],
+                f"{new.name}: comment changed",
+                f"'{_short(old.comment)}' -> '{_short(new.comment)}'", where,
+            ))
+    return out
+
+
+def _match_renamed(old_sigs: dict[str, Signal],
+                   new_sigs: dict[str, Signal]) -> list[tuple[str, str]]:
+    """Pair signals that vanished with signals that appeared at the same bits.
+
+    A rename is far more serious than an add+remove pair: every lookup by the
+    old name breaks silently. Bit geometry is the only reliable anchor, since
+    names are exactly what changed.
+    """
+    gone = [n for n in old_sigs if n not in new_sigs]
+    came = [n for n in new_sigs if n not in old_sigs]
+    pairs: list[tuple[str, str]] = []
+    used: set[str] = set()
+    for old_name in gone:
+        want = _sig_geometry(old_sigs[old_name])
+        for new_name in came:
+            if new_name in used:
+                continue
+            if _sig_geometry(new_sigs[new_name]) == want:
+                pairs.append((old_name, new_name))
+                used.add(new_name)
+                break
+    return pairs
+
+
+def diff_databases(old: Database, new: Database) -> list[DiffFinding]:
+    out: list[DiffFinding] = []
+    old_by_id = {m.frame_id: m for m in old.messages if not m.is_orphan_container}
+    new_by_id = {m.frame_id: m for m in new.messages if not m.is_orphan_container}
+    old_by_name = {m.name: m for m in old.messages if not m.is_orphan_container}
+    new_by_name = {m.name: m for m in new.messages if not m.is_orphan_container}
+
+    # A frame that keeps its name but moves to another CAN id is the single
+    # most disruptive change possible: the name says "unchanged" while the
+    # address says "everything else". Reported per id, it degenerates into a
+    # removal plus an addition and the real cause stays invisible.
+    moved: dict[int, tuple[str, int, int]] = {}
+    moved_new_ids: set[int] = set()
+    for name, old_msg in old_by_name.items():
+        new_msg = new_by_name.get(name)
+        if new_msg is not None and new_msg.frame_id != old_msg.frame_id:
+            moved[old_msg.frame_id] = (name, old_msg.frame_id, new_msg.frame_id)
+            moved_new_ids.add(new_msg.frame_id)
+
+    for fid in sorted(set(old_by_id) | set(new_by_id)):
+        if fid in moved:
+            name, old_id, new_id = moved[fid]
+            out.append(DiffFinding(
+                "DIF-ID", DIF_SEVERITY["DIF-ID"],
+                f"{name}: CAN id changed",
+                f"0x{old_id:03X} -> 0x{new_id:03X}. Same name, different "
+                f"address: routing tables and filters still point at the old id.",
+                f"0x{old_id:03X} -> 0x{new_id:03X}",
+            ))
+            continue
+        if fid in moved_new_ids:
+            continue  # already reported as DIF-ID from the other side
+
+        o = old_by_id.get(fid)
+        n = new_by_id.get(fid)
+        where = f"0x{fid:03X}"
+
+        if o is None:
+            out.append(DiffFinding(
+                "DIF-ADD", DIF_SEVERITY["DIF-ADD"],
+                f"message added: {n.name}",
+                f"DLC={n.dlc}, {len(n.signals)} signals"
+                + (f", cycle {n.cycle_time}ms" if n.cycle_time else ""),
+                where,
+            ))
+            continue
+        if n is None:
+            out.append(DiffFinding(
+                "DIF-DEL", DIF_SEVERITY["DIF-DEL"],
+                f"message removed: {o.name}",
+                f"DLC={o.dlc}, {len(o.signals)} signals — its receivers lose this frame",
+                where,
+            ))
+            continue
+
+        if o.name != n.name:
+            out.append(DiffFinding(
+                "DIF-REN", DIF_SEVERITY["DIF-REN"],
+                f"message renamed on {where}", f"'{o.name}' -> '{n.name}'", where,
+            ))
+        if o.dlc != n.dlc:
+            out.append(DiffFinding(
+                "DIF-DLC", DIF_SEVERITY["DIF-DLC"],
+                f"{n.name}: payload size changed", f"DLC {o.dlc} -> {n.dlc}", where,
+            ))
+        if o.cycle_time != n.cycle_time:
+            out.append(DiffFinding(
+                "DIF-CYC", DIF_SEVERITY["DIF-CYC"],
+                f"{n.name}: cycle time changed",
+                f"{o.cycle_time if o.cycle_time else 'event'} -> "
+                f"{n.cycle_time if n.cycle_time else 'event'}"
+                + (" ms" if o.cycle_time and n.cycle_time else ""),
+                where,
+            ))
+        if o.transmitter != n.transmitter:
+            out.append(DiffFinding(
+                "DIF-TX", DIF_SEVERITY["DIF-TX"],
+                f"{n.name}: transmitter changed",
+                f"{o.transmitter} -> {n.transmitter}", where,
+            ))
+        if o.send_type != n.send_type:
+            out.append(DiffFinding(
+                "DIF-TYP", DIF_SEVERITY["DIF-TYP"],
+                f"{n.name}: send type changed",
+                f"{o.send_type} -> {n.send_type}", where,
+            ))
+        if o.comment != n.comment:
+            out.append(DiffFinding(
+                "DIF-CMT", DIF_SEVERITY["DIF-CMT"],
+                f"{n.name}: message comment changed",
+                f"'{_short(o.comment)}' -> '{_short(n.comment)}'", where,
+            ))
+
+        old_sigs = {s.name: s for s in o.signals}
+        new_sigs = {s.name: s for s in n.signals}
+        pairs = _match_renamed(old_sigs, new_sigs)
+        renamed_old = {a for a, _ in pairs}
+        renamed_new = {b for _, b in pairs}
+
+        for old_name, new_name in pairs:
+            out.append(DiffFinding(
+                "DIF-REN", DIF_SEVERITY["DIF-REN"],
+                f"{n.name}: signal renamed",
+                f"'{old_name}' -> '{new_name}' (same bits — code that looks up "
+                f"'{old_name}' now gets nothing)",
+                where,
+            ))
+
+        for name in sorted(set(old_sigs) & set(new_sigs)):
+            out.extend(_diff_signal(old_sigs[name], new_sigs[name], where))
+
+        for name in sorted(set(old_sigs) - set(new_sigs) - renamed_old):
+            s = old_sigs[name]
+            out.append(DiffFinding(
+                "DIF-DEL", DIF_SEVERITY["DIF-DEL"],
+                f"{n.name}: signal removed: {name}",
+                f"was {_fmt_geometry(s)}" + (f" [{s.unit}]" if s.unit else ""), where,
+            ))
+        for name in sorted(set(new_sigs) - set(old_sigs) - renamed_new):
+            s = new_sigs[name]
+            out.append(DiffFinding(
+                "DIF-ADD", DIF_SEVERITY["DIF-ADD"],
+                f"{n.name}: signal added: {name}",
+                f"{_fmt_geometry(s)}"
+                + (f" [{s.unit}]" if s.unit else "")
+                + (f", {len(s.value_table)} values" if s.value_table else ""),
+                where,
+            ))
+
+    if old.nodes != new.nodes:
+        added = [n for n in new.nodes if n not in old.nodes]
+        gone = [n for n in old.nodes if n not in new.nodes]
+        bits = []
+        if added:
+            bits.append(f"added {', '.join(added)}")
+        if gone:
+            bits.append(f"removed {', '.join(gone)}")
+        out.append(DiffFinding(
+            "DIF-REN", DIF_SEVERITY["DIF-REN"],
+            "node list changed", "; ".join(bits), "BU_",
+        ))
+
+    out.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.code, f.location))
+    return out
+
+
+def render_diff(findings: list[DiffFinding], min_sev: str = "info") -> str:
+    floor = SEVERITY_ORDER[min_sev]
+    shown = [f for f in findings if SEVERITY_ORDER[f.severity] <= floor]
+    if not shown:
+        return "no differences"
+    lines: list[str] = []
+    for f in shown:
+        head = f"{MARK[f.severity]} {f.code}  {f.title}"
+        if f.location:
+            head += f"   ({f.location})"
+        lines.append(head)
+        if f.detail:
+            for chunk in _wrap(f.detail, 96):
+                lines.append(f"      {chunk}")
+    counts = {s: sum(1 for f in findings if f.severity == s)
+              for s in ("error", "warn", "info")}
+    lines.append("")
+    lines.append(f"summary: {counts['error']} error, {counts['warn']} warn, "
+                 f"{counts['info']} info, {len(findings)} total")
+    return "\n".join(lines)
+
+
+def cmd_diff(db: Database, args) -> int:
+    other_path = Path(args.other)
+    if not other_path.is_file():
+        print(f"file not found: {other_path}", file=sys.stderr)
+        return 2
+    other = parse_dbc(other_path)
+    # `dbc_analyze.py diff BASE OTHER` — the positional dbc is the baseline
+    old, new = db, other
+    findings = diff_databases(old, new)
+
+    if args.json:
+        print(json.dumps({
+            "old": str(old.path),
+            "new": str(new.path),
+            "old_messages": len(old.messages),
+            "new_messages": len(new.messages),
+            "old_signals": old.total_signals(),
+            "new_signals": new.total_signals(),
+            "findings": [f.as_dict() for f in findings],
+            "counts": {s: sum(1 for f in findings if f.severity == s)
+                       for s in ("error", "warn", "info")},
+            "identical": not findings,
+        }, ensure_ascii=False, indent=2))
+    else:
+        print(f"old  {old.path}   "
+              f"{len(old.messages)} messages / {old.total_signals()} signals")
+        print(f"new  {new.path}   "
+              f"{len(new.messages)} messages / {new.total_signals()} signals")
+        print()
+        print(render_diff(findings, args.min_severity))
+
+    if sum(1 for f in findings if f.severity == "error") and not args.no_fail:
+        return 1
+    return 0
+
+
+# --------------------------------------------------------------------------
 # entry point
 # --------------------------------------------------------------------------
 
@@ -1100,6 +1466,18 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("out")
     s.add_argument("--force", action="store_true")
     s.set_defaults(func=cmd_fix_encoding)
+
+    s = sub.add_parser(
+        "diff",
+        help="compare two databases (positional DBC is the baseline)",
+    )
+    s.add_argument("dbc", help="baseline (older) database")
+    s.add_argument("other", help="newer database to compare against the baseline")
+    s.add_argument("--json", action="store_true", help="machine-readable output")
+    s.add_argument("--min-severity", choices=["error", "warn", "info"], default="info")
+    s.add_argument("--no-fail", action="store_true",
+                   help="always exit 0 even when error-level differences exist")
+    s.set_defaults(func=cmd_diff)
 
     return p
 

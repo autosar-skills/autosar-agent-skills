@@ -7,6 +7,77 @@
 
 ---
 
+## [1.1.0] — 2026-11-04
+
+### 新增
+
+**`diff` 子命令 —— 两版 DBC 差异对比**
+
+```bash
+python dbc_analyze.py diff old.dbc new.dbc
+python dbc_analyze.py diff old.dbc new.dbc --json
+python dbc_analyze.py diff old.dbc new.dbc --min-severity warn
+```
+
+positional 的第一个参数是基线（旧版）。14 个差异代码：
+
+| 代码 | 严重度 | 说明 |
+|---|---|---|
+| `DIF-GEO` | error | 信号位定义变了（起始位 / 长度 / 字节序 / 符号） |
+| `DIF-DLC` | error | 报文长度变了 |
+| `DIF-REN` | error | 报文 / 信号 / 节点重命名 |
+| `DIF-ID` | error | 同名报文换了 CAN ID |
+| `DIF-CRC` | error | 校验和注释里的 DataID 变了 |
+| `DIF-DEL` | warn | 报文或信号被删除 |
+| `DIF-SCL` | warn | 系数 / 偏移变了 |
+| `DIF-RNG` | warn | 最小值 / 最大值 / 单位变了 |
+| `DIF-VAL` | warn | 值表增删或改标签 |
+| `DIF-CYC` | warn | 周期变了 |
+| `DIF-TX` | warn | 发送节点变了 |
+| `DIF-TYP` | warn | 发送类型变了 |
+| `DIF-ADD` | info | 新增报文或信号 |
+| `DIF-CMT` | info | 仅注释变更 |
+
+有 `error` 级差异时退出码 1，`--no-fail` 强制返回 0。
+
+**两个通用解析思路解决不了的场景，做了专门处理：**
+
+- **同名报文换 CAN ID**。只按 frame id 逐条比对，会退化成「删一条 + 加一条」，
+  真正的原因（地址变了）被埋在几十条增删中间。现在先按名字配对，报一条 `DIF-ID`，
+  并抑制那条误导性的增删。
+- **CRC DataID 变更**。这个信息不在结构化字段里，而是藏在信号的 `CM_` 注释文本中
+  （`CRC16 checksum (DataID: 0x61D2)`）。普通注释比对只会归为 `info`。
+  现在用正则提取 DataID 并单独提级为 `error` —— 因为接收方校验 CRC 失败会**拒收
+  该帧的全部内容**，现象是「模块完全没反应」，比报错更难查。
+
+信号重命名按**位定义**配对（名字正是变了的东西，只能靠位置锚定），因此
+`Bus_Off_Count` → `Bus_Off_Cnt` 会报 `DIF-REN`，而不是一删一加。
+
+### 修复
+
+用真实整车矩阵验证时发现的两个误报：
+
+- **`SYM-001` / `TYP-001` 在复合侧别命名上误报**。当两侧写成
+  `FLM_L_FLTurnLampOnSt` / `FLM_R_FRTurnLampOnSt` 时，归一化只替换了第一个侧别
+  标识，折叠 `L`/`R` 后仍剩 `FLTurn` 与 `FRTurn` 不同。现在会折叠全部侧别标识，
+  并对复合 token 的侧别前缀（`FLADSLampFlt` / `FRADSLampFlt`）也做剥离。
+  前缀剥离加了双重保护：单字符标识不剥离（否则 `AFS` 变 `XFS`），
+  首个 token 不剥离（否则 `ACM` 变 `XCM`）。
+- **`VECTOR__INDEPENDENT_SIG_MSG` 误报**。这是 Vector 存放「未分配给任何报文的
+  信号」的约定容器（id 0 / DLC 0），其中的信号按定义就不属于任何帧。
+  `BIT-001` / `RNG-001` / `DLC-001` / `DUP-001` 现在统一跳过它。
+  对外暴露为 `Message.is_orphan_container`。
+
+### 测试
+
+- 33 → 58 个单元测试，新增 `tests/test_diff.py` 25 个用例
+- 覆盖：增删改、ID 迁移、信号重命名（按位配对）、几何变更、缩放变更、值表变更、
+  周期变更、发送节点变更、CRC DataID 变更、JSON 输出、退出码、`--min-severity`、
+  正反向对称性
+- 测试夹具在运行时从 `examples/demo.dbc` 现场改写生成，仓库不额外保存近似副本
+
+---
+
 ## [1.0.0] — 2026-11-04
 
 首个版本。`dbc-matrix-audit` 是一个零依赖的 DBC 通信矩阵审计器。

@@ -34,6 +34,14 @@ jobs:
           fi
           echo "ok: broken example was rejected as expected"
 
+      - name: diff smoke test
+        run: |
+          python skills/dbc-matrix-audit/scripts/dbc_analyze.py \
+            diff examples/demo.dbc examples/demo.dbc
+          python skills/dbc-matrix-audit/scripts/dbc_analyze.py \
+            diff examples/demo.dbc examples/demo_broken.dbc --json --no-fail \
+            | python -c "import json,sys; d=json.load(sys.stdin); assert d['counts']['error'] > 0, d"
+
       - name: examples are reproducible
         run: |
           cp examples/demo.dbc /tmp/demo.before
