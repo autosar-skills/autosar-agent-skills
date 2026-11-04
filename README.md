@@ -10,7 +10,7 @@ AUTOSAR 相关 Agent Skill 合集。每个 skill 自包含、可直接被 AI Age
 |---|---|---|
 | [dbc-matrix-audit](skills/dbc-matrix-audit/) | DBC 通信矩阵审计：位域重叠、越界、左右不对称、命名漂移、GBK 编码 | **无** |
 
-已上架 Agensi 市场（`DBC Matrix Audit`，免费，审核中）。上架用的英文包由
+已上架 Agensi 市场：**[DBC Matrix Audit](https://www.agensi.io/skills/dbc-matrix-audit)**（免费，已上线）。上架用的英文包由
 `tools/pack_marketplace.py` 从本仓库生成，可复现出与提交版本字节一致的 zip。
 
 ## dbc-matrix-audit
