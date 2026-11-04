@@ -117,7 +117,7 @@ summary: 4 error, 4 warn, 2 info
 ## 安装
 
 ```bash
-git clone https://github.com/ZhaoBoxiong/autosar-agent-skills.git
+git clone https://github.com/autosar-skills/autosar-agent-skills.git
 cd autosar-agent-skills
 python -m unittest discover -s tests      # 61 个测试，纯标准库
 ```

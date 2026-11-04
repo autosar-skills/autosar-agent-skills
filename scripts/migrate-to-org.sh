@@ -36,7 +36,8 @@ case "$ORG" in
 esac
 
 say() { printf '%-6s %s\n' "$1" "$2"; }
-die() { say FAIL "$1"; exit 1; }
+die()  { say FAIL "$1"; exit 1; }
+warn() { say warn "$1"; }
 
 # ---------------------------------------------------------------- preconditions
 say 1/6 "preconditions"
@@ -111,8 +112,18 @@ if ((${#TAGS[@]})); then
   for t in "${TAGS[@]}"; do
     body="$(gh release view "$t" --repo "$ORG/$REPO" --json body --jq .body 2>/dev/null || true)"
     if [[ "$body" == *"$OLD"* ]]; then
-      printf '%s' "${body//$OLD/$NEW}" | gh release edit "$t" --repo "$ORG/$REPO" --notes-file - >/dev/null
-      say ok "release $t"
+      # `--notes-file -` is not accepted by every gh build (it 404s on the
+      # release id rather than complaining about the flag), so go via a temp
+      # file. The old code also aborted the whole script here under `set -e`,
+      # skipping the commit step entirely.
+      tmp="$(mktemp)"
+      printf '%s' "${body//$OLD/$NEW}" > "$tmp"
+      if gh release edit "$t" --repo "$ORG/$REPO" --notes-file "$tmp" >/dev/null; then
+        say ok "release $t"
+      else
+        say warn "release $t could not be edited (fix by hand)"
+      fi
+      rm -f "$tmp"
     fi
   done
 else
