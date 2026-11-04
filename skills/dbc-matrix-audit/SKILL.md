@@ -5,7 +5,7 @@ displayName: DBC 通信矩阵审计
 summary: 审计 CAN / CAN FD DBC 通信矩阵：位域重叠、信号越界、值表缺失、左右不对称、命名漂移、GBK 编码。零依赖。
 description: |
   审计和检查 DBC 通信矩阵文件。当用户提到「分析这个 dbc」「看看这个通信矩阵」「dbc 检查」「CAN 矩阵审计」「信号有没有重叠」「左右不对称」「dbc 乱码」「GBK 编码」「解码这帧报文」时使用。
-  覆盖 12 类结构检查：GBK/UTF-8 编码、位域重叠、信号越界、DLC 非法、ENUM 属性写成数字、左右/AB 对称性、命名大小写漂移、跨报文重名、启动值缺失、发送节点未声明、短信号缺值表。
+  覆盖 11 类结构检查：GBK/UTF-8 编码、位域重叠、信号越界、DLC 非法、ENUM 属性写成数字、左右/AB 对称性、命名大小写漂移、跨报文重名、启动值缺失、发送节点未声明、短信号缺值表。
   Audit DBC communication matrices (CAN / CAN FD). Detects bit-field overlaps, out-of-range signals, illegal DLC, enum attributes written as numbers, left/right asymmetry, case-only spelling drift, duplicate signal names, missing start values, undeclared transmitters, and GBK-encoded comments. Also decodes raw frames and exports the signal inventory.
 version: 1.0.0
 author: autosar-agent-skills
@@ -72,9 +72,9 @@ python dbc_analyze.py fix-encoding matrix.dbc matrix_utf8.dbc
 | `STA-001` | info | 大量信号未设 `GenSigStartValue` |
 | `NOD-001` | info | 发送节点未在 `BU_` 中声明 |
 | `VAL-001` | info | 短信号（≤4 bit）没有值表 |
-| `MUX-001` | info | 复用信号（multiplexed）结构可疑 |
 
 每项规则的判定细节和**误报场景**见 `references/checks.md`。
+复用信号（multiplexed）尚未感知，已知局限见该文件末尾。
 
 ## 为什么这些检查值得做
 

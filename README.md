@@ -12,7 +12,7 @@ AUTOSAR 相关 Agent Skill 合集。每个 skill 自包含、可直接被 AI Age
 
 ## dbc-matrix-audit
 
-DBC 通信矩阵的静态审计器。12 类结构检查 + 实帧解码 + CSV 导出，**纯标准库**。
+DBC 通信矩阵的静态审计器。11 类结构检查 + 实帧解码 + CSV 导出，**纯标准库**。
 
 ```bash
 python skills/dbc-matrix-audit/scripts/dbc_analyze.py info     matrix.dbc
@@ -94,16 +94,28 @@ pip install -e .
 
 `skills/<name>/SKILL.md` 遵循通用 AgentSkill 格式（YAML frontmatter + 使用说明）。把整个 `skills/<name>/` 目录放到 agent 的 skill 路径下即可，脚本通过相对路径 `scripts/dbc_analyze.py` 调用。
 
+OpenClaw 用户：
+
+```bash
+openclaw skills install skills/dbc-matrix-audit          # 首次安装
+openclaw skills install --force skills/dbc-matrix-audit  # 仓库更新后重新同步
+openclaw skills info dbc-matrix-audit                    # 确认 Ready
+```
+
+安装会复制一份到 `~/.openclaw/workspace/skills/`，因此**仓库更新后需要重新执行一次 `--force`**
+才会同步过去。
+
 ## 目录结构
 
 ```
 skills/dbc-matrix-audit/
 ├── SKILL.md                  使用说明与检查项清单
 ├── scripts/dbc_analyze.py    核心实现（单文件，标准库）
-└── references/checks.md      每条规则的判定方式与误报场景
+└── references/               规则细节、编码问题、DBC 语法笔记
 examples/                     合成示例（干净 / 埋坑）
 tools/gen_demo_dbc.py         示例生成器
 tests/                        33 个单元测试
+CHANGELOG.md                  版本变更记录
 ```
 
 ## 许可

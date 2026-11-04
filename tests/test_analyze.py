@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -254,3 +255,44 @@ class TestCliSurface(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDocConsistency(unittest.TestCase):
+    """Documentation must not advertise check codes the code cannot produce."""
+
+    def test_every_documented_code_is_implemented(self):
+        skill_md = (ROOT / "skills" / "dbc-matrix-audit" / "SKILL.md").read_text(encoding="utf-8")
+        documented = set(re.findall(r"`([A-Z]{3}-\d{3})`", skill_md))
+        self.assertTrue(documented, "no check codes found in SKILL.md")
+
+        source = SCRIPT.read_text(encoding="utf-8")
+        implemented = set(re.findall(r'code="([A-Z]{3}-\d{3})"', source))
+        missing = documented - implemented
+        self.assertEqual(missing, set(), f"documented but never emitted: {missing}")
+
+    def test_every_implemented_code_is_documented(self):
+        skill_md = (ROOT / "skills" / "dbc-matrix-audit" / "SKILL.md").read_text(encoding="utf-8")
+        documented = set(re.findall(r"`([A-Z]{3}-\d{3})`", skill_md))
+        source = SCRIPT.read_text(encoding="utf-8")
+        implemented = set(re.findall(r'code="([A-Z]{3}-\d{3})"', source))
+        undocumented = implemented - documented
+        self.assertEqual(undocumented, set(), f"emitted but undocumented: {undocumented}")
+
+
+class TestDeterminism(unittest.TestCase):
+    """Two parses of the same file must agree, and lint must be stable."""
+
+    def test_parse_is_deterministic(self):
+        a = dbc.parse_dbc(EXAMPLES / "demo.dbc")
+        b = dbc.parse_dbc(EXAMPLES / "demo.dbc")
+        self.assertEqual(
+            [(m.frame_id, m.name, len(m.signals)) for m in a.messages],
+            [(m.frame_id, m.name, len(m.signals)) for m in b.messages],
+        )
+
+    def test_lint_order_is_stable(self):
+        db = dbc.parse_dbc(EXAMPLES / "demo_broken.dbc")
+        text, _, _ = dbc.read_dbc_text(EXAMPLES / "demo_broken.dbc")
+        first = [f.code for f in dbc.run_checks(db, text)]
+        second = [f.code for f in dbc.run_checks(db, text)]
+        self.assertEqual(first, second)
