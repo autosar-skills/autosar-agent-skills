@@ -203,6 +203,17 @@ class Message:
     def is_fd(self) -> bool:
         return self.dlc > 8
 
+    @property
+    def is_orphan_container(self) -> bool:
+        """True for Vector's parking slot for unassigned signals.
+
+        ``VECTOR__INDEPENDENT_SIG_MSG`` is id 0 with DLC 0. Vector uses it to
+        keep signals that exist in the database but are not wired into any
+        frame. Payload-geometry checks are meaningless inside it, and flagging
+        it produces noise that buries real problems.
+        """
+        return self.name == "VECTOR__INDEPENDENT_SIG_MSG" or self.dlc == 0
+
 
 @dataclass
 class Database:
@@ -512,6 +523,8 @@ def check_encoding(db: Database) -> list[Finding]:
 def check_bit_overlap(db: Database) -> list[Finding]:
     out: list[Finding] = []
     for msg in db.messages:
+        if msg.is_orphan_container:
+            continue
         owner: dict[tuple[int, int], str] = {}
         clashes: dict[tuple[str, str], set[tuple[int, int]]] = {}
         for sig in msg.signals:
@@ -536,6 +549,8 @@ def check_bit_overlap(db: Database) -> list[Finding]:
 def check_out_of_range(db: Database) -> list[Finding]:
     out: list[Finding] = []
     for msg in db.messages:
+        if msg.is_orphan_container:
+            continue
         limit = msg.dlc * 8
         for sig in msg.signals:
             last_byte = sig.max_bit_index()
@@ -576,16 +591,27 @@ def check_enum_as_number(db: Database, statements_source: str) -> list[Finding]:
 
 
 def _sym_tokens() -> list[tuple[str, str]]:
-    """Token pairs that conventionally denote the two sides of a vehicle."""
+    """Token pairs that conventionally denote the two sides of a vehicle.
+
+    Deliberately excludes loose pairs such as IN/OUT, which are far more
+    often used for unrelated semantics and would cause false positives.
+    """
     return [
+        ("LEFT", "RIGHT"),
+        ("MFL", "MFR"),
+        ("FL", "FR"),
+        ("LH", "RH"),
         ("L", "R"),
         ("A", "B"),
-        ("LEFT", "RIGHT"),
-        ("LH", "RH"),
-        ("FL", "FR"),
-        ("MFL", "MFR"),
-        ("IN", "OUT"),
     ]
+
+
+def _left_tokens() -> set[str]:
+    return {a for a, _ in _sym_tokens()}
+
+
+def _right_tokens() -> set[str]:
+    return {b for _, b in _sym_tokens()}
 
 
 def _swap_sym(name: str) -> str | None:
@@ -603,14 +629,46 @@ def _swap_sym(name: str) -> str | None:
 
 
 def _normalize_sym(name: str) -> str:
-    """Replace the side token with ``X`` so left and right compare equal."""
-    parts = name.split("_")
-    for i, part in enumerate(parts):
-        for a, b in _sym_tokens():
-            if part in (a, b):
-                parts[i] = "X"
-                return "_".join(parts)
-    return name
+    """Canonicalise a signal name so the two sides compare equal.
+
+    Two levels are needed:
+
+    1. **Whole token** — ``FLM_L_FLTurnLampOnSt`` against
+       ``FLM_R_FRTurnLampOnSt``. The ``L``/``R`` part is its own token, easy.
+    2. **Token prefix** — ``FLADSLampFlt`` against ``FRADSLampBri``. Here the
+       side is baked into the front of a compound token, so the token as a
+       whole is not a side token. Stripping a leading side prefix is what
+       makes these pair up.
+
+    Folding only level 1 leaves ``FLM_X_FLTurn`` versus ``FLM_X_FRTurn`` and
+    produces a spurious asymmetry on every matrix written this way.
+    """
+    parts: list[str] = []
+    for idx, token in enumerate(name.split("_")):
+        if token in _left_tokens() or token in _right_tokens():
+            parts.append("X")
+            continue
+        # The first token is normally the object name (ACM, FLM, VIU, RTE...).
+        # Prefix-stripping there would turn ACM into XCM and pollute grouping.
+        if idx == 0:
+            parts.append(token)
+            continue
+        replaced = token
+        for side in _left_tokens() | _right_tokens():
+            # Single-letter tokens are too ambiguous as a prefix: "AFS"
+            # (Adaptive Front-lighting System) would become "XFS". Only
+            # multi-character side tokens are safe to strip from a word.
+            if len(side) < 2:
+                continue
+            # the remainder must start with an uppercase letter or a digit, so
+            # ordinary words such as ``Flt`` / ``FlowSt`` are left alone
+            if token.startswith(side) and len(token) > len(side) + 1:
+                rest = token[len(side):]
+                if rest[0].isupper() or rest[0].isdigit():
+                    replaced = "X" + rest
+                    break
+        parts.append(replaced)
+    return "_".join(parts)
 
 
 def _pair_messages(db: Database) -> list[tuple[Message, Message]]:
@@ -684,6 +742,11 @@ def check_case_variants(db: Database) -> list[Finding]:
 def check_duplicate_names(db: Database) -> list[Finding]:
     counts: dict[str, list[str]] = {}
     for msg in db.messages:
+        # Signals parked in Vector's orphan container are by definition copies
+        # of signals that live in a real frame; reporting those as duplicates
+        # is noise, not a finding.
+        if msg.is_orphan_container:
+            continue
         for sig in msg.signals:
             counts.setdefault(sig.name, []).append(msg.name)
     out = []
@@ -735,6 +798,8 @@ def check_transmitters(db: Database) -> list[Finding]:
 def check_dlc(db: Database) -> list[Finding]:
     out = []
     for msg in db.messages:
+        if msg.is_orphan_container:
+            continue
         if msg.dlc not in CAN_FD_DLC:
             out.append(Finding(
                 code="DLC-001",
