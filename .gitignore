@@ -20,3 +20,6 @@ examples/*_utf8.dbc
 .vscode/
 .idea/
 .DS_Store
+
+# 内部运营手册 / 分发文案：不进公开仓库
+packaging/pypi/
