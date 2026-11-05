@@ -1,16 +1,25 @@
-# Agensi listing — submitted 2026-11-04
+# Agensi listing — dbc-matrix-audit
 
-This is the **exact content submitted to the marketplace**, kept as the record of
-what is live. Edit here first on the next revision, then re-submit.
+Submission record. Edit here first on the next revision, then re-submit.
 
-Status: `Pending Review / In review / Free` — 1 total, 0 live, 1 pending.
-Package: `dbc-matrix-audit.zip`, sha256 `54454647d036181c96e45648b1cde0c72b2b1d04346c937089a36800476d19fe`
-at submission time. Build with `python3 tools/pack_marketplace.py`.
+## Version reconciliation
 
-That sha only reproduces on the commit that was live when submitted. `8b27f44` later fixed
-the packaged examples README, so rebuilding on HEAD gives a different hash — the content
-changed, the build is still deterministic. To verify byte-identity, build from the tagged
-submission commit, not from HEAD.
+| | |
+|---|---|
+| Marketplace status | `Live` — approved, first submission 2026-11-04 |
+| Live package | sha256 `a38e3186e71937560005bdfb3bf2c75997de9e303d4b73d95e2948dc1d3271cb` |
+| Repo HEAD package | sha256 `7e7709703f9feb9fa9640e6f8abc9b4c722c66e2cf392692599d88db57f21a3b` |
+| Delta | `homepage:` frontmatter + a `## Links` section (blog write-up, repo). Docs only — no code, no behaviour, no check codes change. |
+| Build | `python3 tools/pack_marketplace.py --skill dbc-matrix-audit` |
+
+The live listing is one revision behind on documentation. That is deliberate: re-submitting a
+live skill spends another review cycle, and nothing an agent does depends on those links.
+Re-submit only when there is a reason to ship code, and carry this delta at the same time.
+
+Note on reproducibility: `3d29d2ac…` reproduces only on the commit that was live at submission.
+`8b27f44` later fixed the packaged examples README, and the `Links` section was added after
+that, so rebuilding on HEAD gives a different hash. The build itself is deterministic — build
+from a given commit and you get the same bytes every time.
 
 ---
 

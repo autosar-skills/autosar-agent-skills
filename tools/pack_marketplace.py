@@ -58,15 +58,29 @@ def _iter_files(root: Path):
 def _overlay_for(market: str, skill: str) -> tuple[Path, bool]:
     """Return (overlay dir, whether it is skill-specific).
 
-    `packaging/<market>/<skill>/` wins when it exists, so skills can carry their
-    own English SKILL.md / README.md. Otherwise fall back to the older flat
-    `packaging/<market>/` layout — kept so existing packages still build the
-    same bytes.
+    `packaging/<market>/<skill>/` is the layout to use: one folder per skill, so
+    each package owns its English SKILL.md / README.md / LISTING.md and a new
+    skill cannot silently inherit a sibling's overlay.
+
+    The older flat `packaging/<market>/` layout is still accepted so a checkout
+    from before the split keeps building, but it is a footgun: every skill in
+    that market shares the same SKILL.md. Say so on stderr instead of letting it
+    work by accident.
     """
     per_skill = REPO / "packaging" / market / skill
     if per_skill.is_dir():
         return per_skill, True
-    return REPO / "packaging" / market, False
+
+    flat = REPO / "packaging" / market
+    if (flat / "SKILL.md").is_file():
+        print(
+            f"warning: {flat.relative_to(REPO)}/ has a top-level SKILL.md but no "
+            f"{skill}/ subfolder — using the shared flat overlay. Any skill in "
+            f"this market will get the same SKILL.md. Move these files to "
+            f"{flat.relative_to(REPO)}/{skill}/.",
+            file=sys.stderr,
+        )
+    return flat, False
 
 
 def build(skill: str, market: str) -> Path:

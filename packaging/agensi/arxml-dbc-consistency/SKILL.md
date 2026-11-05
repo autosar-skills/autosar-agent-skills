@@ -4,9 +4,10 @@ description: |
   Cross-check an AUTOSAR Classic ECU configuration ARXML (Com / PduR / CanIf / CanDrv ECUC containers) against a DBC communication matrix — CAN ID binding, DLC, bit geometry, byte order, init value, cycle time, PduR routing, PDU direction.
   Use when the user asks to: validate an ARXML against a DBC, check an AUTOSAR communication stack configuration, find why a signal never arrives or a frame is never sent, verify Com/PduR/CanIf settings, or confirm ECU configuration matches the communication matrix.
   Trigger phrases: "validate this arxml", "arxml and dbc don't match", "communication stack check", "check my Com config", "signal not received", "frame not transmitted", "integration desync", "no signals after importing the dbc", "ecuconfig.xml", "vector arxml", "ECUC check", "PduR routing".
+homepage: https://me.tech-harry.top/blog/arxml-dbc-consistency.html
 license: MIT
 metadata:
-  version: 1.1.1
+  version: 1.1.2
   author: autosar-skills
   tags: [autosar, can, dbc, arxml, ecuc, com, pdur, canif, embedded, consistency]
 ---
@@ -218,3 +219,9 @@ Bit geometry derivation, matching strategy, bus coverage and known limitations:
 - AUTOSAR 4.x ECUC only; 3.x partially compatible
 - Does not read `.xdm` / `.ldf` / `.kcd`
 - No DBC-side static linting — that is what `dbc-matrix-audit` does; the two compose
+
+## Links
+
+- Write-up (how it was built, and the bugs that made it): https://me.tech-harry.top/blog/arxml-dbc-consistency.html
+- Source, issues, changelog: https://github.com/autosar-skills/autosar-agent-skills
+- Companion skill for the DBC side: `dbc-matrix-audit`

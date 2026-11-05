@@ -7,6 +7,40 @@
 
 ---
 
+## [1.1.2] — 2026-11-05 · 文档与仓库结构
+
+### 变更
+
+**`packaging/agensi/` 改为每个 skill 一个子目录。**
+
+原来 `dbc-matrix-audit` 的 overlay 文件散在 `packaging/agensi/` 根目录（`SKILL.md`、
+`README.md`、`LISTING.md`、`logo512.png`），而 `arxml-dbc-consistency` 用的是
+`packaging/agensi/arxml-dbc-consistency/`。两种布局并存，靠 `_overlay_for()` 的
+`is_dir()` 判断临场决定走哪条路。
+
+后果是**: 根目录那套是共享的**。任何一个新 skill 只要不建自己的子目录，就会静默继承
+`dbc-matrix-audit` 的 SKILL.md，而且构建不会报错——包能打出来，只是打错了内容。
+
+现在两个 skill 都在各自的子目录里：
+
+```
+packaging/agensi/dbc-matrix-audit/{SKILL.md,README.md,LISTING.md,logo512.png}
+packaging/agensi/arxml-dbc-consistency/{SKILL.md,LISTING.md,logo512.png}
+```
+
+**产物不变**：`dbc-matrix-audit.zip` 搬家前后都是 `3d29d2ac…`，`cmp` 字节一致。
+打包逻辑读的是 overlay 目录里的文件名和内容，与目录层级无关。
+
+flat 布局仍然被接受（旧的 checkout 不会打不出包），但会往 stderr 打一行警告，
+说明「本市场下所有 skill 会拿到同一个 SKILL.md」。宁可吵一句，也不要静默打错包。
+
+### 新增
+
+两个 skill 的 SKILL.md 都加了 `homepage:`（各自对应的博客文章）和 `## Links` 小节。
+`homepage` 是 SKILL.md frontmatter 的合法键，不触发 `quick_validate.py` 报错。
+
+---
+
 ## [1.1.1] — 2026-11-05
 
 ### 修复

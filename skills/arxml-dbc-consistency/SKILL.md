@@ -3,9 +3,10 @@ name: arxml-dbc-consistency
 description: |
   校验 AUTOSAR 通信栈 ARXML 与 DBC 是否对得上。触发：arxml 校验、arxml 和 dbc 对不上、通信栈配置检查、Com/PduR/CanIf/CanDrv 配置核对、这个 arxml 配得对不对、ECU 配置和矩阵一致性、信号收不到、报文发不出去、联调对不上、导入 dbc 后没信号、某厂商标 A arxml 检查、vector arxml 检查。
   Cross-check AUTOSAR Classic ECU configuration ARXML (Com, PduR, CanIf, CanDrv ECUC containers) against a DBC communication matrix: CAN ID binding, DLC, bit geometry, byte order, signedness, init value, cycle time, PduR routing, and PDU direction.
+homepage: https://me.tech-harry.top/blog/arxml-dbc-consistency.html
 license: MIT
 metadata:
-  version: 1.1.1
+  version: 1.1.2
   author: autosar-agent-skills
   tags: [autosar, can, dbc, arxml, ecuc, com, pdur, canif, consistency]
 ---

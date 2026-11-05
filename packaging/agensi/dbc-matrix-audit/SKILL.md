@@ -4,9 +4,10 @@ description: |
   Audit, lint, diff and decode CAN / CAN FD communication matrices in DBC format, using one zero-dependency script.
   Use when the user asks to: audit a DBC file, check a communication matrix, find overlapping or out-of-range signals, find missing value tables, check left/right signal symmetry, look for naming drift, decode a raw CAN frame, export a signal inventory, or compare two versions of a DBC.
   Trigger phrases: "analyze this dbc", "communication matrix", "dbc check", "CAN matrix audit", "signal overlap", "signal out of range", "left right asymmetric", "naming drift", "dbc garbled", "GBK encoding", "value table missing", "decode this frame", "compare two dbc", "version diff", "what changed between these versions".
+homepage: https://me.tech-harry.top/blog/dbc-matrix-audit-skill.html
 license: MIT
 metadata:
-  version: 1.3.0
+  version: 1.3.1
   author: autosar-skills
   tags: [autosar, can, canfd, dbc, communication-matrix, lint, embedded]
 ---
@@ -182,3 +183,9 @@ requires the signal list to actually change, otherwise those checks would not fi
 See `examples/README.md` for which edit plants which defect.
 
 Both are synthetic and contain no real vehicle, supplier or personal data.
+
+## Links
+
+- Write-up (design rationale and the five-step method): https://me.tech-harry.top/blog/dbc-matrix-audit-skill.html
+- Source, issues, changelog: https://github.com/autosar-skills/autosar-agent-skills
+- Companion skill for the AUTOSAR stack side: `arxml-dbc-consistency`

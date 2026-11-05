@@ -2,12 +2,19 @@
 
 Submission record. Edit here first on the next revision, then re-submit.
 
-Status: **Pending Review — submitted 2026-11-05 11:29** (2 total skills: 1 live, 1 pending).
-Review takes 24-48h. Listing: `ARXML DBC Consistency`, Free.
-Package: `dist/agensi/arxml-dbc-consistency.zip`, sha256 `e55258f44a7858311c7dd20893e6da06a021cbfb997b1b7cd73bbcb5fd2a14b5`
-Build with `python3 tools/pack_marketplace.py --skill arxml-dbc-consistency`.
-That hash only reproduces on the commit it was built from — rebuild and re-record it after
-any content change.
+## Version reconciliation
+
+| | |
+|---|---|
+| Marketplace status | `Pending Review` — submitted 2026-11-05 11:29, re-submitted 2026-11-05 13:5x with v1.1.1 |
+| Live package | none yet (first submission) |
+| Repo HEAD package | `dist/agensi/arxml-dbc-consistency.zip`, sha256 `6e615907170f046bd4dd89ecabbc394b312455de1471d7e6fdbc52afee704a7d` |
+| Build | `python3 tools/pack_marketplace.py --skill arxml-dbc-consistency` |
+
+Review takes 24-48h. 2 total skills: 1 live, 1 pending.
+
+Keep the two hashes in step: every content change invalidates the recorded sha, so rebuild
+and re-record in the same commit that changes the package.
 
 ---
 

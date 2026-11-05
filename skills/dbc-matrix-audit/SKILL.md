@@ -3,9 +3,10 @@ name: dbc-matrix-audit
 description: |
   审计、检查、对比 CAN / CAN FD 的 DBC 通信矩阵。触发：分析这个 dbc、通信矩阵、dbc 检查、CAN 矩阵审计、信号重叠、信号越界、左右不对称、命名漂移、dbc 乱码、GBK 编码、解码这帧报文、值表缺失、对比两版 dbc、版本差异、升级改了什么、两个 dbc 有什么不同。
   Audit, lint and diff CAN / CAN FD DBC communication matrices: bit-field overlaps, out-of-range signals, illegal DLC, enum attributes written as numbers, left/right asymmetry, case-only spelling drift, duplicate signal names, missing start values, undeclared transmitters, GBK-encoded comments, raw frame decoding, signal inventory export, and two-revision comparison (renames, CAN id moves, geometry shifts, scaling, value tables, CRC data ids).
+homepage: https://me.tech-harry.top/blog/dbc-matrix-audit-skill.html
 license: MIT
 metadata:
-  version: 1.3.0
+  version: 1.3.1
   author: autosar-agent-skills
   tags: [autosar, can, canfd, dbc, communication-matrix, lint, embedded]
 ---
