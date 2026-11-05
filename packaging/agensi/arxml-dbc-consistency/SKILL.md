@@ -3,10 +3,10 @@ name: arxml-dbc-consistency
 description: |
   Cross-check an AUTOSAR Classic ECU configuration ARXML (Com / PduR / CanIf / CanDrv ECUC containers) against a DBC communication matrix — CAN ID binding, DLC, bit geometry, byte order, init value, cycle time, PduR routing, PDU direction.
   Use when the user asks to: validate an ARXML against a DBC, check an AUTOSAR communication stack configuration, find why a signal never arrives or a frame is never sent, verify Com/PduR/CanIf settings, or confirm ECU configuration matches the communication matrix.
-  Trigger phrases: "validate this arxml", "arxml and dbc don't match", "communication stack check", "check my Com config", "signal not received", "frame not transmitted", "integration desync", "no signals after importing the dbc", "puhua arxml", "vector arxml", "ECUC check", "PduR routing".
+  Trigger phrases: "validate this arxml", "arxml and dbc don't match", "communication stack check", "check my Com config", "signal not received", "frame not transmitted", "integration desync", "no signals after importing the dbc", "ecuconfig.xml", "vector arxml", "ECUC check", "PduR routing".
 license: MIT
 metadata:
-  version: 1.1.0
+  version: 1.1.1
   author: autosar-skills
   tags: [autosar, can, dbc, arxml, ecuc, com, pdur, canif, embedded, consistency]
 ---

@@ -4,7 +4,7 @@ Submission record. Edit here first on the next revision, then re-submit.
 
 Status: **Pending Review — submitted 2026-11-05 11:29** (2 total skills: 1 live, 1 pending).
 Review takes 24-48h. Listing: `ARXML DBC Consistency`, Free.
-Package: `dist/agensi/arxml-dbc-consistency.zip`, sha256 `d93491de598b6ea2b2e86e576b74466157d6c253a009eb049c4e2633c65d783b`
+Package: `dist/agensi/arxml-dbc-consistency.zip`, sha256 `e55258f44a7858311c7dd20893e6da06a021cbfb997b1b7cd73bbcb5fd2a14b5`
 Build with `python3 tools/pack_marketplace.py --skill arxml-dbc-consistency`.
 That hash only reproduces on the commit it was built from — rebuild and re-record it after
 any content change.

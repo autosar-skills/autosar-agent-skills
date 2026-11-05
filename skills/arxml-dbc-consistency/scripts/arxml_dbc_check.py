@@ -1620,13 +1620,42 @@ def run_checks(
                         where=p.name,
                     )
                 )
-        # DBC 是 FD 但 CanIf 未配 FD 帧格式
+        # DBC 说是 FD，CanIf 却配成经典帧。
+        # 不要断言是哪一边错：DBC 可能误标 FD，ARXML 也可能漏配。
+        # 但如果这份 PDU 自己配成经典帧、又要求超过 8 字节，
+        # 那它自身就已不可能成立——把这条硬证据直接摆出来，
+        # 否则读者只会照着「ARXML 漏配」去改，改错了方向。
         if msg.is_fd and p.id_type != "?" and not p.is_fd:
+            if p.dlc is not None and p.dlc > 8:
+                # 再看 Com 侧信号到底占了多长：如果信号真占满 >8 字节，
+                # 那「这帧是 FD」就没有争议，错的只能是 FD 标记本身，
+                # 或者这帧根本不该出现在本 ECU 的矩阵里。
+                span = 0
+                if b.com is not None:
+                    occ: set[int] = set()
+                    for s in b.com.signals:
+                        occ |= set(s.bits)
+                    if occ:
+                        span = max(occ) // 8 + 1
+                if span > 8:
+                    detail = (
+                        f"经典 CAN 单帧上限 8 字节，而这一帧的信号实际占满 {span} 字节"
+                        f"（Com IPdu 也写 {p.dlc} 字节），所以它只能是 FD——"
+                        "CanIf 的经典帧标记错了。若这帧本就不该出现在本 ECU 的矩阵里，"
+                        "那是 DBC 内容的问题，不是补一个 FD 标记能解决的。"
+                    )
+                else:
+                    detail = (
+                        f"这份 PDU 配成经典帧却要求 {p.dlc} 字节，而经典 CAN 单帧上限 8 字节。"
+                        "CanIdType 或 DLC 必有一个写错了。"
+                    )
+            else:
+                detail = "FD 帧按普通 CAN 处理，长数据会被丢。"
             findings.append(
                 Finding(
                     "AXD-016", "error",
-                    f"{p.name} 未配 FD 帧格式，但 DBC 中 0x{msg.can_id:X} 是 CAN FD",
-                    "FD 帧按普通 CAN 处理，长数据会被丢。",
+                    f"{p.name} 配成经典帧，但 DBC 中 0x{msg.can_id:X} 是 CAN FD",
+                    detail,
                     where=p.name,
                 )
             )

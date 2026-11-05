@@ -5,7 +5,7 @@ description: |
   Cross-check AUTOSAR Classic ECU configuration ARXML (Com, PduR, CanIf, CanDrv ECUC containers) against a DBC communication matrix: CAN ID binding, DLC, bit geometry, byte order, signedness, init value, cycle time, PduR routing, and PDU direction.
 license: MIT
 metadata:
-  version: 1.1.0
+  version: 1.1.1
   author: autosar-agent-skills
   tags: [autosar, can, dbc, arxml, ecuc, com, pdur, canif, consistency]
 ---
