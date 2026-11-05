@@ -16,6 +16,7 @@ Requires: python3 -m pip install build twine
 """
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,12 @@ DIST = os.path.join(ROOT, "dist")
 MODULES = {
     "dbc_analyze.py": "skills/dbc-matrix-audit/scripts/dbc_analyze.py",
     "arxml_dbc_check.py": "skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py",
+    # arxml_dbc_check's `selftest` subcommand imports this at call time, so
+    # leaving it out builds fine and then fails on the user's machine with
+    # ModuleNotFoundError. Caught by installing the wheel into a clean venv
+    # and running `arxml-dbc-check selftest` — not by any unit test, because
+    # the tests run from the repo where the module is importable.
+    "demo_fixtures.py": "skills/arxml-dbc-consistency/scripts/demo_fixtures.py",
 }
 EXTRA = ["pyproject.toml", "README.en.md", "LICENSE", "CHANGELOG.md"]
 
@@ -53,7 +60,16 @@ def stage(target):
     if replaced == text:
         raise SystemExit("pyproject.toml: expected package-dir line not found — "
                          "the build would silently package nothing")
-    open(pp, "w", encoding="utf-8").write(replaced)
+
+    # py-modules has to list every staged module. The repo's editable install
+    # only needs the two entry-point modules, but the published wheel must also
+    # carry demo_fixtures.py — arxml_dbc_check.selftest imports it at call time.
+    want = 'py-modules = ["%s"]' % '", "'.join(sorted(m[:-3] for m in MODULES))
+    new, n = re.subn(r'py-modules = \[[^\]]*\]', want, replaced)
+    if n != 1:
+        raise SystemExit("pyproject.toml: expected exactly one py-modules line, "
+                         "found %d — refusing to guess" % n)
+    open(pp, "w", encoding="utf-8").write(new)
 
 
 def main():
@@ -92,6 +108,31 @@ def main():
         print(chk.stdout.strip() or chk.stderr.strip())
         if chk.returncode != 0:
             raise SystemExit("twine check failed — PyPI would reject this")
+
+        # Install the wheel into a throwaway venv and actually run both commands.
+        # twine check only inspects metadata; it cannot tell you that a lazily
+        # imported module is missing from the archive, which is exactly the bug
+        # this step caught on 1.3.1.
+        smoke = os.path.join(tmp, "smokevenv")
+        subprocess.run([sys.executable, "-m", "venv", smoke], check=True,
+                       capture_output=True)
+        whl = [f for f in files if f.endswith(".whl")][0]
+        subprocess.run([os.path.join(smoke, "bin", "pip"), "install", "-q",
+                        "--no-index", "--no-deps",
+                        os.path.join(out, whl)], check=True, capture_output=True)
+        print("\ninstalled-wheel smoke test:")
+        for cmd, check_sub in (("dbc-analyze", "--version"),
+                               ("arxml-dbc-check", "selftest")):
+            exe = os.path.join(smoke, "bin", cmd)
+            r2 = subprocess.run([exe, check_sub], capture_output=True, text=True)
+            ok = r2.returncode == 0
+            tail = (r2.stdout or r2.stderr).strip().splitlines()
+            print("   %-16s %-9s %s" % (cmd, check_sub,
+                                        (tail[-1] if tail else "")[:70]))
+            if not ok:
+                print(r2.stdout[-1500:])
+                print(r2.stderr[-1500:])
+                raise SystemExit("%s %s failed in a clean install" % (cmd, check_sub))
 
         if args.check:
             print("\n--check: output discarded (build + verify only)")

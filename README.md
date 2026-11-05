@@ -5,6 +5,7 @@
 ![license: MIT](https://img.shields.io/badge/license-MIT-green)
 ![checks: 11 + 26](https://img.shields.io/badge/checks-11%20%2B%2026-orange)
 ![tests: 65](https://img.shields.io/badge/tests-65-blueviolet)
+[![PyPI](https://img.shields.io/pypi/v/dbc-matrix-audit.svg)](https://pypi.org/project/dbc-matrix-audit/)
 
 [English](README.en.md) | 中文
 
@@ -232,7 +233,7 @@ python -m unittest discover -s tests      # 65 个测试，纯标准库
 不需要 `pip install`，克隆下来就能跑。想把短命令装进 PATH：
 
 ```bash
-pip install dbc-matrix-audit
+pip install dbc-matrix-audit          # https://pypi.org/project/dbc-matrix-audit/
 dbc-analyze lint matrix.dbc                  # DBC 审计
 arxml-dbc-check check cfg.arxml matrix.dbc   # ARXML × DBC 交叉校验
 ```

@@ -5,6 +5,7 @@
 ![license: MIT](https://img.shields.io/badge/license-MIT-green)
 ![checks: 11 + 26](https://img.shields.io/badge/checks-11%20%2B%2026-orange)
 ![tests: 65](https://img.shields.io/badge/tests-65-blueviolet)
+[![PyPI](https://img.shields.io/pypi/v/dbc-matrix-audit.svg)](https://pypi.org/project/dbc-matrix-audit/)
 
 [English](README.en.md) | [中文](README.md)
 
@@ -247,7 +248,7 @@ No `pip install` required — the scripts run from the clone as-is. If you want
 the short commands on your PATH:
 
 ```bash
-pip install dbc-matrix-audit
+pip install dbc-matrix-audit          # https://pypi.org/project/dbc-matrix-audit/
 dbc-analyze lint matrix.dbc        # DBC auditor
 arxml-dbc-check check cfg.arxml matrix.dbc   # ARXML x DBC cross-check
 ```

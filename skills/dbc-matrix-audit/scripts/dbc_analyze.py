@@ -30,7 +30,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-__version__ = "0.2.0"
+__version__ = "1.3.2"
 
 # --------------------------------------------------------------------------
 # constants

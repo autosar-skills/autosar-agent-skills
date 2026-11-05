@@ -7,6 +7,41 @@
 
 ---
 
+## [1.3.2] — 2026-11-05 · 首个 PyPI 版本（修两处打包缺陷）
+
+### 修复
+
+**`arxml-dbc-check selftest` 在安装后的包里直接崩溃。**
+
+`cmd_selftest` 在调用时才 `import demo_fixtures`，而 `demo_fixtures.py` 没有被
+打进 wheel —— 构建成功、`twine check` 通过、单元测试全绿，用户装完一跑就是
+`ModuleNotFoundError`。所有测试都在仓库里跑，而仓库里那个模块是可导入的，
+所以没有任何一条断言能发现它。
+
+`tools/build_pypi.py` 现在把 `demo_fixtures.py` 一起打包，并在 `py-modules`
+里声明（这一行在暂存构建时改写，不影响仓库内的 editable 安装）。
+
+**`dbc-analyze --version` 报 `0.2.0`。**
+
+`dbc_analyze.py` 里的 `__version__` 从 0.2.0 之后就没再更新过，与
+`pyproject.toml` 的版本号脱节。现已对齐到 1.3.2。
+
+### 新增
+
+**`tools/build_pypi.py` 的安装冒烟测试。** 构建后自动建一个临时 venv、装上刚打出的
+wheel、实际执行 `dbc-analyze --version` 和 `arxml-dbc-check selftest`。
+`twine check` 只看元数据，看不出「懒加载的模块没进包」这类问题 —— 正是上面那个 bug 的形态。
+
+### 首次发布
+
+PyPI: https://pypi.org/project/dbc-matrix-audit/
+
+```
+pip install dbc-matrix-audit
+dbc-analyze lint matrix.dbc
+arxml-dbc-check check cfg.arxml matrix.dbc
+```
+
 ## [1.1.2] — 2026-11-05 · 文档与仓库结构
 
 ### 变更
