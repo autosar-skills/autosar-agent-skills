@@ -1,8 +1,34 @@
 # autosar-agent-skills
 
+![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
+![dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)
+![license: MIT](https://img.shields.io/badge/license-MIT-green)
+![checks: 11 + 26](https://img.shields.io/badge/checks-11%20%2B%2026-orange)
+![tests: 65](https://img.shields.io/badge/tests-65-blueviolet)
+
+[English](README.en.md) | 中文
+
 AUTOSAR 相关 Agent Skill 合集。每个 skill 自包含、可直接被 AI Agent 加载，也可以当独立命令行工具用。
 
 面向真实工程问题：这些工具解决的问题都是「编译期不报错、联调时才发现」的那一类。
+
+```
+DBC 文件 ──► 解析（纯标准库）──► 11 类结构检查 ──► 报告
+                                    │
+                                    ├─ ENC/BIT/RNG/DLC   error（必崩）
+                                    ├─ ENU/SYM/TYP/DUP   warn（会漂）
+                                    └─ STA/NOD/VAL       info（该看一眼）
+
+ARXML 配置 ──┐
+             ├──► 按 CAN ID 绑定 ──► 26 个交叉校验码 ──► 报告
+DBC 文件 ────┘        │
+                      └─ 位几何（LSB↔MSB 换算）· DLC · 字节序
+                         初始值 · PduR 路由 · 收发方向
+```
+
+> 设计取舍与踩坑记录：
+> [如何为 AI Agent 设计一个工程级 Skill](https://me.tech-harry.top/blog/dbc-matrix-audit-skill.html) ·
+> [105 个错误，99 个是假的](https://me.tech-harry.top/blog/arxml-dbc-consistency.html)
 
 ## Skills
 
@@ -196,7 +222,7 @@ ARXML 常同时管多条 CAN。脚本按 `CanIfBufferCfg → CanIfHthCfg → Can
 ```bash
 git clone https://github.com/autosar-skills/autosar-agent-skills.git
 cd autosar-agent-skills
-python -m unittest discover -s tests      # 61 个测试，纯标准库
+python -m unittest discover -s tests      # 65 个测试，纯标准库
 ```
 
 不需要 `pip install`。要用 `dbc-analyze` 这个短命令时：
@@ -246,7 +272,7 @@ skills/arxml-dbc-consistency/
 └── references/               checks.md（中）/ checks.en.md（英）
 tools/gen_demo_dbc.py         示例生成器
 tools/pack_marketplace.py     市场打包器（可复现，带结构校验）
-tests/                        61 个单元测试（含 diff 专项）
+tests/                        65 个单元测试（含 diff 专项）
 packaging/agensi/             上架物料：英文 SKILL.md / README 覆盖层、文案存档、logo
 CHANGELOG.md                  版本变更记录
 dist/                         构建产物（gitignored，用上面两个脚本重新生成）

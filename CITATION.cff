@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use this tool in engineering work or research, cite it as below."
+title: "autosar-agent-skills: zero-dependency AUTOSAR / CAN engineering tools for AI agents"
+abstract: >-
+  Zero-dependency (Python standard library) tooling for AUTOSAR Classic Platform
+  and CAN communication matrix engineering. dbc-matrix-audit performs 11
+  structural checks on DBC files (bit-field overlap, out-of-range signals,
+  left/right asymmetry, naming drift, GBK encoding) plus two-revision diff, live
+  frame decoding and CSV export. arxml-dbc-consistency cross-validates ARXML
+  ECUC configuration against a DBC matrix across 26 check codes covering CAN ID
+  binding, DLC, bit geometry, byte order, init values, PduR routing and TX/RX
+  direction. Scope is deliberately static analysis only: no bus simulation and
+  no runtime behaviour is verified.
+authors:
+  - family-names: "Zhao"
+    given-names: "Harry"
+    name-particle: ""
+    affiliation: "Independent"
+version: 1.3.1
+date-released: 2026-11-05
+license: MIT
+repository-code: "https://github.com/autosar-skills/autosar-agent-skills"
+url: "https://me.tech-harry.top/blog/"
+keywords:
+  - AUTOSAR
+  - AUTOSAR Classic Platform
+  - CAN
+  - CAN FD
+  - DBC
+  - ARXML
+  - communication matrix
+  - static analysis
+  - linter
+  - embedded
+  - agent skills
+type: software
