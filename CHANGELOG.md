@@ -11,6 +11,33 @@
 
 ### 新增
 
+**`arxml-dbc-consistency`：AUTOSAR 通信栈 ARXML × DBC 交叉校验。**
+
+编译期不报错、联调才发现的那一类问题：帧在矩阵里有、通信栈里没有；信号解到了邻居的位；
+起始位差三位，值全错但没有任何异常。26 个检查码，绑定主键是 CAN ID 加真实 PduR 路由链
+（`DBC 帧 → CanIf PDU → EcuC Pdu → PduR 路由 → EcuC Pdu(COM) → Com IPdu`），不是名字。
+
+- 位几何只有**一个**正确公式：AUTOSAR 的 `ComBitPosition` 存的是 LSB（平坦编号，与字节序无关），
+  DBC 大端用锯齿编号且起始位是 MSB，先回退 `len-1` 步。真实工程实测 215/215 信号命中。
+  早期「两种约定都试、任一命中即通过」的设计被否掉——它会把真错误洗白，实测也只有 153/215。
+- 整网矩阵与单 ECU 视角分开判定：前者只对本 ECU 该发/该收的帧判 error。11 节点 91 帧的矩阵上，
+  原来「每帧都必须配」的假设造出 99 条假 error，把真缺陷全埋了。
+- 总线覆盖率：ARXML 管多条 CAN 时，命中率 <20% 的总线整体跳过并说明，避免「只查了一条总线
+  却被读成全都对上了」。
+- 中英双语文档：`SKILL.md` 中英并列，`references/checks.md` / `checks.en.md` 各 26 码，
+  `test_contract.py` 同时断言两种语言与代码一致。
+
+三份不相关的厂商工程（某厂商标 A、厂商标 B/某 Cortex-M 控制器、整网矩阵）暴露了 6 个解析缺陷 + 伪帧处理 +
+多配置选择规则——每个只在某一家成立的解析假设，换一家就崩。
+
+### 修复
+
+**`pack_marketplace.py` 支持按 skill 覆盖。** 原先覆盖层是扁平的一层
+`packaging/<market>/`，只能服务一个 skill；改成 `packaging/<market>/<skill>/` 优先、
+扁平布局兜底，`dbc-matrix-audit` 的产物字节不变。
+
+### 新增
+
 **市场打包（`tools/pack_marketplace.py`）。** 上架 Agensi 需要「单一顶层文件夹 + `SKILL.md`
 在其根 + 纯文本 + 带 README」。手工打包不可复现：`dist/` 是 gitignored，换个环境就
 拼不出同一个包，也就无法证明买家下载到的就是仓库里的代码。
@@ -183,7 +210,7 @@ positional 的第一个参数是基线（旧版）。14 个差异代码：
 用真实整车矩阵验证时发现的两个误报：
 
 - **`SYM-001` / `TYP-001` 在复合侧别命名上误报**。当两侧写成
-  `FLM_L_FLTurnLampOnSt` / `FLM_R_FRTurnLampOnSt` 时，归一化只替换了第一个侧别
+  `ECU_L_FLTurnLampOnSt` / `ECU_R_FRTurnLampOnSt` 时，归一化只替换了第一个侧别
   标识，折叠 `L`/`R` 后仍剩 `FLTurn` 与 `FRTurn` 不同。现在会折叠全部侧别标识，
   并对复合 token 的侧别前缀（`FLADSLampFlt` / `FRADSLampFlt`）也做剥离。
   前缀剥离加了双重保护：单字符标识不剥离（否则 `AFS` 变 `XFS`），

@@ -5,7 +5,12 @@ what is live. Edit here first on the next revision, then re-submit.
 
 Status: `Pending Review / In review / Free` — 1 total, 0 live, 1 pending.
 Package: `dbc-matrix-audit.zip`, sha256 `54454647d036181c96e45648b1cde0c72b2b1d04346c937089a36800476d19fe`
-Build it with `python3 tools/pack_marketplace.py` — byte-identical to what was uploaded.
+at submission time. Build with `python3 tools/pack_marketplace.py`.
+
+That sha only reproduces on the commit that was live when submitted. `8b27f44` later fixed
+the packaged examples README, so rebuilding on HEAD gives a different hash — the content
+changed, the build is still deterministic. To verify byte-identity, build from the tagged
+submission commit, not from HEAD.
 
 ---
 

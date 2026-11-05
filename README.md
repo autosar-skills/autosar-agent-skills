@@ -9,9 +9,14 @@ AUTOSAR 相关 Agent Skill 合集。每个 skill 自包含、可直接被 AI Age
 | Skill | 说明 | 依赖 |
 |---|---|---|
 | [dbc-matrix-audit](skills/dbc-matrix-audit/) | DBC 通信矩阵审计：位域重叠、越界、左右不对称、命名漂移、GBK 编码 | **无** |
+| [arxml-dbc-consistency](skills/arxml-dbc-consistency/) | ARXML 通信栈 × DBC 交叉校验：绑定、DLC、位几何、字节序、初始值、PduR 路由、收发方向 | **无** |
 
-已上架 Agensi 市场：**[DBC Matrix Audit](https://www.agensi.io/skills/dbc-matrix-audit)**（免费，已上线）。上架用的英文包由
-`tools/pack_marketplace.py` 从本仓库生成，可复现出与提交版本字节一致的 zip。
+已上架 Agensi 市场：**[DBC Matrix Audit](https://www.agensi.io/skills/dbc-matrix-audit)**（免费，已上线）。
+上架用的英文包由 `tools/pack_marketplace.py` 从本仓库生成；同样的输入重复构建字节一致。
+
+> 注意：`LISTING.md` 记录的是**提交当时**那个 zip 的 sha256。之后若改动了该 skill 的正文
+> （例如 `8b27f44` 修了示例 README），重新构建的 sha 会不同 —— 这是内容变了，不是打包不可复现。
+> 需要核对时，先在对应 commit 上构建再比 sha。
 
 ## dbc-matrix-audit
 
@@ -71,10 +76,10 @@ python skills/dbc-matrix-audit/scripts/dbc_analyze.py diff     old.dbc new.dbc
 ```bash
 # 真实案例：NM 报文换 ID + CRC DataID 变更，两者都会导致整条链路失效
 $ python skills/dbc-matrix-audit/scripts/dbc_analyze.py diff old.dbc new.dbc
-[E] DIF-CRC  VIU_Info_Checksum: checksum data id changed   (0x1D2)
+[E] DIF-CRC  Node_Info_Checksum: checksum data id changed   (0x1D2)
       0x61D2 -> 0x41D2. Every receiver that validates this CRC will reject
       the frame until it is rebuilt with the new id.
-[E] DIF-ID   NM_Autosar_FLM_R: CAN id changed   (0x457 -> 0x46B)
+[E] DIF-ID   NM_Autosar_ECU_R: CAN id changed   (0x457 -> 0x46B)
       Same name, different address: routing tables and filters still point
       at the old id.
 ```
@@ -116,6 +121,75 @@ summary: 4 error, 4 warn, 2 info
 ```
 
 `skills/dbc-matrix-audit/examples/demo.dbc` 是干净的合成矩阵，`demo_broken.dbc` 埋了 10 类缺陷用于演示。两者都由 `tools/gen_demo_dbc.py` 生成，位分配由程序计算，结构上不可能重叠。
+
+## arxml-dbc-consistency
+
+AUTOSAR Classic ECU 配置（Com / PduR / CanIf / CanDrv 的 ECUC 容器）与 DBC 通信矩阵的交叉校验。
+26 个检查码，**纯标准库**。
+
+```bash
+python skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py probe      ecuconfig.xml
+python skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py check      ecuconfig.xml matrix.dbc
+python skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py matrix     ecuconfig.xml matrix.dbc --csv inventory.csv
+python skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py selftest
+```
+
+`probe` 先看结构（厂商的容器名、参数名、信号挂载位置差异极大），`check` 再比对。
+`check` 有 error 时退出码 1，可直接接 CI。
+
+### 为什么不能按名字匹配
+
+真实配置里 Com 与 CanIf **不直连**，绑定主键只能是 CAN ID：
+
+```
+DBC 帧 ──CanId──> CanIf PDU ──CanIfXxxPduRef──> EcuC Pdu(X)
+                        ──PduR 路由──> EcuC Pdu(COM_X)
+                        ──ComPduIdRef──> Com IPdu
+```
+
+`IPDU_COM_TP_Param` 与 DBC 帧 `Diag_CalData` 名字毫无关系，
+却是同一条链路（`COM_TP_Param → CanTp_TP_Param → 0x9B`）。按名字连必然全错。
+
+### 位几何只有一个正确公式
+
+AUTOSAR 的 `ComBitPosition` 存的始终是信号 **LSB**（平坦编号，bit0 = byte0 的 LSB），
+**与字节序无关**。DBC 对大端用锯齿编号且起始位写 **MSB**，所以先回退 `len-1` 步：
+
+```python
+def motorola_msb_from_lsb(lsb, length):
+    pos = lsb
+    for _ in range(length - 1):
+        pos = pos - 15 if pos % 8 == 7 else pos + 1
+    return pos
+```
+
+真实工程实测 **215/215** 信号命中。早期版本假设「MSB / LSB 两派并存」，做成两种都试、
+任一命中即通过 —— 这个设计是错的：真错误会被巧合命中洗白，且实测只有 153/215。
+
+### 整网矩阵 ≠ 单 ECU 视角
+
+一份 DBC 可能只描述本 ECU（十几帧），也可能是整张网络（几十上百帧、`BU_:` 一堆别的节点）。
+后者里绝大多数帧是别人发给第三方的，**本 ECU 不该有配置**。脚本按「发送方是本 ECU、
+或某信号的接收方含本 ECU」逐帧判定，只对相关帧判 error。
+
+一个 11 节点 91 帧的矩阵上，原来「每帧都必须配」的假设造出 **99 条假 error**，
+把 6 条真缺陷全埋了。
+
+### 总线覆盖率
+
+ARXML 常同时管多条 CAN。脚本按 `CanIfBufferCfg → CanIfHthCfg → CanIfHthCanCtrlIdRef`
+回溯总线，算每条总线在 DBC 里的命中率：≥20% 正常比对，<20% 整体跳过并出 info。
+`check` 头部直接打出来，汇报时必须原样转述：
+
+```
+总线    CANIF_CTR_BCAN 16/21 比对 | CANIF_CTR_PCAN 0/32 跳过
+```
+
+### 文档
+
+- 中文：`skills/arxml-dbc-consistency/references/checks.md`
+- English: `skills/arxml-dbc-consistency/references/checks.en.md`
+- 英文 SKILL.md（市场包用）：`packaging/agensi/arxml-dbc-consistency/SKILL.md`
 
 ## 安装
 
@@ -163,6 +237,13 @@ skills/dbc-matrix-audit/
 ├── scripts/dbc_analyze.py    核心实现（单文件，标准库）
 ├── examples/                 合成示例（干净 / 埋坑），随 skill 一起分发
 └── references/               规则细节、编码问题、DBC 语法笔记
+skills/arxml-dbc-consistency/
+├── SKILL.md                  中英双语执行手册（模式判定 / 流程 / 汇报格式）
+├── README.md                 英文说明（仓库与市场共用）
+├── scripts/arxml_dbc_check.py 核心实现（单文件，标准库）
+├── scripts/demo_fixtures.py  程序生成的示例（拓扑必须与真实工程一致）
+├── scripts/test_contract.py  文档码 ↔ 代码实现 双向断言（中英双语都算）
+└── references/               checks.md（中）/ checks.en.md（英）
 tools/gen_demo_dbc.py         示例生成器
 tools/pack_marketplace.py     市场打包器（可复现，带结构校验）
 tests/                        61 个单元测试（含 diff 专项）
@@ -174,12 +255,14 @@ dist/                         构建产物（gitignored，用上面两个脚本�
 ### 市场打包
 
 ```bash
-python3 tools/pack_marketplace.py           # → dist/agensi/dbc-matrix-audit.zip
-python3 tools/pack_marketplace.py --check   # 只校验不落盘
+python3 tools/pack_marketplace.py                              # → dist/agensi/dbc-matrix-audit.zip
+python3 tools/pack_marketplace.py --skill arxml-dbc-consistency  # → dist/agensi/arxml-dbc-consistency.zip
+python3 tools/pack_marketplace.py --check                        # 只校验不落盘
 ```
 
-`packaging/<market>/` 里的 `SKILL.md` / `README.md` 会覆盖仓库中的中文版，其余文件从
-`skills/<name>/` 取。打包器剔除 `__pycache__`、二进制、隐藏文件和软链，并校验
+`packaging/<market>/<skill>/` 里的 `SKILL.md` / `README.md` 会覆盖仓库中的中文版，其余文件从
+`skills/<name>/` 取。扁平布局 `packaging/<market>/` 仍支持（老 skill 用），
+此时只读它的顶层文件，避免把同层的别的 skill 覆盖层打进包。打包器剔除 `__pycache__`、二进制、隐藏文件和软链，并校验
 「单一顶层文件夹 + SKILL.md 在其根 + 必须有 README」，不满足直接失败。
 条目排序 + 固定时间戳，重复构建字节一致。
 

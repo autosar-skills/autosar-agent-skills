@@ -55,12 +55,26 @@ def _iter_files(root: Path):
         yield p
 
 
+def _overlay_for(market: str, skill: str) -> tuple[Path, bool]:
+    """Return (overlay dir, whether it is skill-specific).
+
+    `packaging/<market>/<skill>/` wins when it exists, so skills can carry their
+    own English SKILL.md / README.md. Otherwise fall back to the older flat
+    `packaging/<market>/` layout — kept so existing packages still build the
+    same bytes.
+    """
+    per_skill = REPO / "packaging" / market / skill
+    if per_skill.is_dir():
+        return per_skill, True
+    return REPO / "packaging" / market, False
+
+
 def build(skill: str, market: str) -> Path:
     src = REPO / "skills" / skill
     if not src.is_dir():
         raise SystemExit(f"no such skill: {src}")
 
-    overlay = REPO / "packaging" / market
+    overlay, per_skill = _overlay_for(market, skill)
     out_dir = REPO / "dist" / market
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"{skill}.zip"
@@ -81,7 +95,14 @@ def build(skill: str, market: str) -> Path:
 
         # Files that exist only in the packaging overlay (e.g. README.md when
         # the skill folder has none).
-        for p in _iter_files(overlay):
+        #
+        # Flat layout (packaging/<market>/) is shared by every skill, so only its
+        # top level belongs to this package — recursing there would pull a
+        # sibling skill's overlay into this zip.
+        extra = _iter_files(overlay) if per_skill else [
+            p for p in sorted(overlay.iterdir()) if p.is_file() and not p.is_symlink()
+        ]
+        for p in extra:
             if p.suffix != ".md" or p.name == "LISTING.md":
                 continue  # LISTING.md is operator copy, not part of the package
             arc = f"{skill}/{p.name}"
