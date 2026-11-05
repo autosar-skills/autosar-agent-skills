@@ -1,5 +1,11 @@
 # autosar-agent-skills
 
+![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
+![dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)
+![license: MIT](https://img.shields.io/badge/license-MIT-green)
+![checks: 11 + 26](https://img.shields.io/badge/checks-11%20%2B%2026-orange)
+![tests: 65](https://img.shields.io/badge/tests-65-blueviolet)
+
 [English](README.en.md) | [中文](README.md)
 
 Agent skills for AUTOSAR Classic Platform engineering. Zero third-party
@@ -224,6 +230,10 @@ bus     CANIF_CTR_BCAN 16/21 compared | CANIF_CTR_PCAN 0/32 skipped
 - Chinese: `skills/arxml-dbc-consistency/references/checks.md`
 - English: `skills/arxml-dbc-consistency/references/checks.en.md`
 - English SKILL.md (for marketplace packages): `packaging/agensi/arxml-dbc-consistency/SKILL.md`
+
+## Documentation site
+
+Rendered docs with full schema markup: https://autosar-skills.github.io/autosar-agent-skills/
 
 ## Install
 

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dbc-matrix-audit — DBC communication matrix linter (11 checks, zero dependencies)</title>
+<meta name="description" content="Static auditor for DBC communication matrices: bit-field overlap, out-of-range signals, left/right asymmetry, naming drift and GBK encoding. Two-revision diff, live frame decoding, CSV export — Python standard library only.">
+<link rel="canonical" href="https://autosar-skills.github.io/autosar-agent-skills/dbc-matrix-audit.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="dbc-matrix-audit — DBC communication matrix linter">
+<meta property="og:description" content="11 structural checks, two-revision diff, live frame decoding. Python standard library only.">
+<meta property="og:url" content="https://autosar-skills.github.io/autosar-agent-skills/dbc-matrix-audit.html">
+<meta property="og:site_name" content="autosar-agent-skills">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "@id": "https://autosar-skills.github.io/autosar-agent-skills/dbc-matrix-audit.html#article",
+  "headline": "dbc-matrix-audit — DBC communication matrix linter",
+  "description": "Static auditor for DBC communication matrices: 11 structural checks, two-revision diff, live frame decoding and CSV export. Python standard library only.",
+  "url": "https://autosar-skills.github.io/autosar-agent-skills/dbc-matrix-audit.html",
+  "inLanguage": "en",
+  "datePublished": "2026-11-04",
+  "dateModified": "2026-11-05",
+  "proficiencyLevel": "Expert",
+  "author": { "@id": "https://me.tech-harry.top/#person" },
+  "about": {
+    "@type": "SoftwareApplication",
+    "name": "dbc-matrix-audit",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any (Python 3.8+)",
+    "softwareVersion": "1.3.1",
+    "license": "https://opensource.org/licenses/MIT",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "codeRepository": "https://github.com/autosar-skills/autosar-agent-skills"
+  },
+  "keywords": ["DBC", "CAN", "CAN FD", "communication matrix", "linter", "AUTOSAR", "static analysis"]
+}
+</script>
+</head>
+<body>
+<div class="glow"></div>
+<header class="bar">
+  <div class="bar-in">
+    <a class="brand" href="./"><b>A</b>UTOSAR-AGENT-SKILLS</a>
+    <span class="sp"></span>
+    <a href="index.html">← Overview</a>
+    <a href="https://github.com/autosar-skills/autosar-agent-skills">GitHub</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <h1>dbc-matrix-audit</h1>
+  <p class="lede">
+    Static auditor for DBC communication matrices. 11 structural checks,
+    two-revision diff, live frame decoding and CSV export — Python standard
+    library only.
+  </p>
+  <div class="meta">
+    <span>v1.3.1</span><span>11 checks</span><span>14 diff codes</span>
+    <span>0 dependencies</span><span>MIT</span>
+  </div>
+
+  <h2>Commands</h2>
+<pre><code>python skills/dbc-matrix-audit/scripts/dbc_analyze.py info     matrix.dbc
+python skills/dbc-matrix-audit/scripts/dbc_analyze.py messages matrix.dbc
+python skills/dbc-matrix-audit/scripts/dbc_analyze.py lint     matrix.dbc
+python skills/dbc-matrix-audit/scripts/dbc_analyze.py decode   matrix.dbc 0x1D2 1234052a00000000
+python skills/dbc-matrix-audit/scripts/dbc_analyze.py export   matrix.dbc --csv inventory.csv
+python skills/dbc-matrix-audit/scripts/dbc_analyze.py diff     old.dbc new.dbc</code></pre>
+
+  <h2>Checks</h2>
+  <table>
+    <tr><th>Code</th><th>Severity</th><th>Meaning</th></tr>
+    <tr><td><code>ENC-001</code></td><td>error</td><td>File is not UTF-8 (typically GBK comments)</td></tr>
+    <tr><td><code>BIT-001</code></td><td>error</td><td>Two signals in one frame occupy the same bit</td></tr>
+    <tr><td><code>RNG-001</code></td><td>error</td><td>Signal extends past the frame length</td></tr>
+    <tr><td><code>DLC-001</code></td><td>error</td><td>Illegal DLC</td></tr>
+    <tr><td><code>ENU-001</code></td><td>warn</td><td>ENUM attribute assigned a numeric index</td></tr>
+    <tr><td><code>SYM-001</code></td><td>warn</td><td>Left/right signal sets (L/R, A/B, FL/FR…) are asymmetric</td></tr>
+    <tr><td><code>TYP-001</code></td><td>warn</td><td>Same signal spelled differently once the side token is removed</td></tr>
+    <tr><td><code>DUP-001</code></td><td>warn</td><td>Signal name reused across frames</td></tr>
+    <tr><td><code>STA-001</code></td><td>info</td><td>Many signals have no <code>GenSigStartValue</code></td></tr>
+    <tr><td><code>NOD-001</code></td><td>info</td><td>Transmitting node not declared in <code>BU_</code></td></tr>
+    <tr><td><code>VAL-001</code></td><td>info</td><td>Short signal (≤4 bit) has no value table</td></tr>
+  </table>
+
+  <h2>Revision diff</h2>
+  <p>
+    Comparing two matrix revisions produces 14 distinct codes. Two miss patterns
+    are handled deliberately:
+  </p>
+  <ul>
+    <li><b>Same name, new ID.</b> Comparing by ID alone degrades into "one deleted
+      + one added", burying the actual cause. The tool pairs by name first and
+      suppresses the misleading add/delete pair.</li>
+    <li><b>CRC DataID change.</b> It hides inside a <code>CM_</code> comment
+      (<code>CRC16 checksum (DataID: 0x61D2)</code>), so a plain comment diff
+      reports <code>info</code>. The tool regex-extracts it and escalates to
+      <code>error</code> — every receiver will reject the whole frame.</li>
+  </ul>
+  <p>
+    Renames are matched by bit definition, so <code>Bus_Off_Count</code> →
+    <code>Bus_Off_Cnt</code> is one <code>DIF-REN</code>, not a delete plus an add.
+  </p>
+
+  <h2>Example output</h2>
+<pre><code>$ dbc_analyze.py lint demo_broken.dbc
+[E] BIT-001  ACM_B_Supply_Voltage and ACM_B_Temperature occupy overlapping bits   (0x201 ACM_B_Status)
+[E] DLC-001  illegal DLC 13   (0x500 Log_Snapshot)
+[E] ENC-001  file is not valid UTF-8 (detected: gbk)
+[E] RNG-001  Log_Word_4 extends past the frame length   (0x500 Log_Snapshot)
+[W] DUP-001  signal name Node_Status_Counter appears in 2 frames
+[W] ENU-001  1 ENUM attribute assignments use numeric indices
+[W] SYM-001  ACM_A_Status / ACM_B_Status are not symmetric   (0x200 vs 0x201)
+[W] TYP-001  same signal spelled differently (beyond the side token)
+              ACM_X_Projection_State vs ACM_X_Projection_statE
+summary: 4 error, 4 warn, 2 info</code></pre>
+
+  <div class="note">
+    Exit code is 1 when any error is reported, so the command drops straight into
+    a CI step or a pre-commit hook.
+  </div>
+
+  <footer>
+    <span>MIT License</span>
+    <a href="https://github.com/autosar-skills/autosar-agent-skills">Repository</a>
+    <a href="https://me.tech-harry.top/blog/dbc-matrix-audit-skill.en.html">Design write-up</a>
+  </footer>
+</div>
+</body>
+</html>

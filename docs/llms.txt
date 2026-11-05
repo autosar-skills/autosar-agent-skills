@@ -1,0 +1,39 @@
+# autosar-agent-skills
+
+> Zero-dependency (Python standard library) tooling for AUTOSAR Classic Platform
+> and CAN communication matrix engineering. Targets bugs that compile cleanly and
+> only surface during ECU integration testing. MIT licensed.
+
+## Tools
+
+- [dbc-matrix-audit](https://autosar-skills.github.io/autosar-agent-skills/dbc-matrix-audit.html):
+  DBC communication matrix auditor. 11 structural checks (bit-field overlap,
+  out-of-range signals, left/right asymmetry, naming drift, GBK encoding),
+  14 two-revision diff codes, live frame decoding, CSV export. Exit code 1 on
+  error, so it works as a CI gate.
+
+- [arxml-dbc-consistency](https://autosar-skills.github.io/autosar-agent-skills/arxml-dbc-consistency.html):
+  Cross-validates ARXML ECUC configuration (Com / PduR / CanIf / CanDrv) against
+  a DBC matrix. 26 check codes covering CAN ID binding, DLC, bit geometry, byte
+  order, init values, PduR routing and TX/RX direction.
+
+## Source
+
+- [Repository](https://github.com/autosar-skills/autosar-agent-skills) — MIT,
+  single-file implementations, 65 unit tests, reproducible packaging.
+
+## Scope
+
+Static analysis only. No bus simulation and no runtime verification: a clean run
+means the configuration is internally consistent and consistent with the matrix,
+not that the network works.
+
+## Background
+
+- [Designing an engineering-grade skill for an AI agent](https://me.tech-harry.top/blog/dbc-matrix-audit-skill.en.html)
+- [105 errors, 99 of them were not real](https://me.tech-harry.top/blog/arxml-dbc-consistency.en.html)
+
+## Citation
+
+See CITATION.cff in the repository. Cite as: Harry Zhao, autosar-agent-skills,
+MIT, https://github.com/autosar-skills/autosar-agent-skills

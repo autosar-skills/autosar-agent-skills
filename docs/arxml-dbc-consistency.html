@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>arxml-dbc-consistency — ARXML × DBC cross-validation (26 checks, zero dependencies)</title>
+<meta name="description" content="Cross-validates AUTOSAR Classic ECU configuration (Com, PduR, CanIf, CanDrv ECUC containers) against a DBC communication matrix: CAN ID binding, DLC, bit geometry, byte order, init values, PduR routing and TX/RX direction. 26 check codes, Python standard library only.">
+<link rel="canonical" href="https://autosar-skills.github.io/autosar-agent-skills/arxml-dbc-consistency.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="arxml-dbc-consistency — ARXML × DBC cross-validation">
+<meta property="og:description" content="26 check codes across CAN ID binding, bit geometry, byte order, PduR routing and TX/RX direction. Python standard library only.">
+<meta property="og:url" content="https://autosar-skills.github.io/autosar-agent-skills/arxml-dbc-consistency.html">
+<meta property="og:site_name" content="autosar-agent-skills">
+<meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "@id": "https://autosar-skills.github.io/autosar-agent-skills/arxml-dbc-consistency.html#article",
+  "headline": "arxml-dbc-consistency — ARXML × DBC cross-validation",
+  "description": "Cross-validates AUTOSAR Classic ECU configuration against a DBC communication matrix across 26 check codes.",
+  "url": "https://autosar-skills.github.io/autosar-agent-skills/arxml-dbc-consistency.html",
+  "inLanguage": "en",
+  "datePublished": "2026-11-04",
+  "dateModified": "2026-11-05",
+  "proficiencyLevel": "Expert",
+  "author": { "@id": "https://me.tech-harry.top/#person" },
+  "about": {
+    "@type": "SoftwareApplication",
+    "name": "arxml-dbc-consistency",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any (Python 3.8+)",
+    "softwareVersion": "1.1.2",
+    "license": "https://opensource.org/licenses/MIT",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "codeRepository": "https://github.com/autosar-skills/autosar-agent-skills"
+  },
+  "keywords": ["ARXML", "DBC", "AUTOSAR", "Com", "PduR", "CanIf", "ECUC", "bit geometry", "CAN FD"]
+}
+</script>
+</head>
+<body>
+<div class="glow"></div>
+<header class="bar">
+  <div class="bar-in">
+    <a class="brand" href="./"><b>A</b>UTOSAR-AGENT-SKILLS</a>
+    <span class="sp"></span>
+    <a href="index.html">← Overview</a>
+    <a href="https://github.com/autosar-skills/autosar-agent-skills">GitHub</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <h1>arxml-dbc-consistency</h1>
+  <p class="lede">
+    Cross-validates AUTOSAR Classic ECU configuration — Com, PduR, CanIf and
+    CanDrv ECUC containers — against a DBC communication matrix. 26 check codes,
+    Python standard library only.
+  </p>
+  <div class="meta">
+    <span>v1.1.2</span><span>26 check codes</span>
+    <span>0 dependencies</span><span>MIT</span>
+  </div>
+
+  <h2>Commands</h2>
+<pre><code>python skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py probe  ecuconfig.xml
+python skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py check  ecuconfig.xml matrix.dbc
+python skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py matrix ecuconfig.xml matrix.dbc --csv inventory.csv
+python skills/arxml-dbc-consistency/scripts/arxml_dbc_check.py selftest</code></pre>
+  <p>
+    <code>probe</code> inspects structure first — vendor container names, parameter
+    names and where signals are mounted vary enormously. <code>check</code> then
+    compares. Exit code is 1 on error, so it drops straight into CI.
+  </p>
+
+  <h2>Why name matching cannot work</h2>
+  <p>In a real configuration Com and CanIf are <b>not directly connected</b>;
+     the only sound binding key is the CAN ID:</p>
+<pre><code>DBC frame ──CanId──> CanIf PDU ──CanIfXxxPduRef──> EcuC Pdu(X)
+                        ──PduR routing──> EcuC Pdu(COM_X)
+                        ──ComPduIdRef──> Com IPdu</code></pre>
+  <p>
+    <code>IPDU_COM_TP_Param</code> has nothing name-wise in common with the DBC
+    frame <code>Diag_CalData</code>, yet they are the same link
+    (<code>COM_TP_Param → CanTp_TP_Param → 0x9B</code>). Joining by name is
+    guaranteed wrong.
+  </p>
+
+  <h2>There is exactly one correct bit-geometry formula</h2>
+  <p>
+    AUTOSAR's <code>ComBitPosition</code> always stores the signal <b>LSB</b>
+    (flat numbering, bit 0 = LSB of byte 0), <b>regardless of byte order</b>.
+    DBC numbers Motorola signals in sawtooth form and stores the <b>MSB</b>, so
+    first walk back <code>len-1</code> steps:
+  </p>
+<pre><code>def motorola_msb_from_lsb(lsb, length):
+    pos = lsb
+    for _ in range(length - 1):
+        pos = pos - 15 if pos % 8 == 7 else pos + 1
+    return pos</code></pre>
+  <p>
+    Measured on a production project: <b>215/215</b> signals matched. An earlier
+    version assumed "MSB and LSB schools coexist", tried both and accepted
+    either — that design is wrong: a genuine error gets whitewashed by a
+    coincidental match, and the measured hit rate was only 153/215.
+  </p>
+
+  <h2>A whole-network matrix is not one ECU's view</h2>
+  <p>
+    A DBC may describe only this ECU (a dozen frames), or the entire network
+    (hundreds of frames, many other nodes under <code>BU_:</code>). In the latter,
+    most frames belong to other parties and this ECU should have no configuration
+    for them at all. The script decides frame by frame — "sender is this ECU, or
+    some signal's receiver includes this ECU" — and only raises <code>error</code>
+    on relevant frames.
+  </p>
+  <div class="note">
+    On an 11-node, 91-frame matrix, the old "every frame must be configured"
+    assumption produced <b>99 false errors</b> and buried all 6 real defects.
+    False positives are worse than misses: nobody reads past line one hundred.
+  </div>
+
+  <h2>Bus coverage</h2>
+  <p>
+    An ARXML often drives several CAN buses at once. The script walks back through
+    <code>CanIfBufferCfg → CanIfHthCfg → CanIfHthCanCtrlIdRef</code> to identify
+    the bus and computes each bus's hit rate against the DBC: ≥20% is compared
+    normally, &lt;20% is skipped wholesale with an info line.
+  </p>
+
+  <h2>Reference</h2>
+  <ul>
+    <li><a href="https://github.com/autosar-skills/autosar-agent-skills/blob/main/skills/arxml-dbc-consistency/references/checks.en.md">checks.en.md</a> — every check code, its decision rule and false-positive scenarios</li>
+    <li><a href="https://me.tech-harry.top/blog/arxml-dbc-consistency.en.html">105 errors, 99 of them were not real</a> — the debugging story</li>
+  </ul>
+
+  <footer>
+    <span>MIT License</span>
+    <a href="https://github.com/autosar-skills/autosar-agent-skills">Repository</a>
+    <a href="https://me.tech-harry.top/">Harry Zhao</a>
+  </footer>
+</div>
+</body>
+</html>

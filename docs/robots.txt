@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://autosar-skills.github.io/autosar-agent-skills/sitemap.xml
+# llms.txt: https://autosar-skills.github.io/autosar-agent-skills/llms.txt

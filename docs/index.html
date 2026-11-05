@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>autosar-agent-skills — zero-dependency AUTOSAR / CAN tooling for AI agents</title>
+<meta name="description" content="Zero-dependency (Python standard library) tooling for AUTOSAR Classic Platform and CAN communication matrices: DBC linter with 11 structural checks, two-revision diff, frame decoding, and ARXML × DBC cross-validation with 26 check codes.">
+<link rel="canonical" href="https://autosar-skills.github.io/autosar-agent-skills/">
+<link rel="alternate" hreflang="en" href="https://autosar-skills.github.io/autosar-agent-skills/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="autosar-agent-skills — zero-dependency AUTOSAR / CAN tooling">
+<meta property="og:description" content="DBC linter (11 checks), revision diff, frame decoding, and ARXML × DBC cross-validation (26 checks). Pure Python standard library.">
+<meta property="og:url" content="https://autosar-skills.github.io/autosar-agent-skills/">
+<meta property="og:site_name" content="autosar-agent-skills">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="autosar-agent-skills — zero-dependency AUTOSAR / CAN tooling">
+<meta name="twitter:description" content="DBC linter (11 checks), revision diff, frame decoding, and ARXML × DBC cross-validation (26 checks). Pure Python standard library.">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": "https://autosar-skills.github.io/autosar-agent-skills/#source",
+      "name": "autosar-agent-skills",
+      "description": "Zero-dependency AUTOSAR Classic Platform and CAN communication matrix tooling for AI agents and CI pipelines.",
+      "codeRepository": "https://github.com/autosar-skills/autosar-agent-skills",
+      "programmingLanguage": "Python",
+      "runtimePlatform": "Python 3.8+",
+      "license": "https://opensource.org/licenses/MIT",
+      "author": { "@id": "https://me.tech-harry.top/#person" },
+      "version": "1.3.1",
+      "datePublished": "2026-11-04",
+      "dateModified": "2026-11-05",
+      "keywords": ["AUTOSAR", "CAN", "CAN FD", "DBC", "ARXML", "communication matrix", "linter", "static analysis", "embedded"]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://autosar-skills.github.io/autosar-agent-skills/#dbc-matrix-audit",
+      "name": "dbc-matrix-audit",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Static analysis",
+      "operatingSystem": "Any (Python 3.8+)",
+      "softwareVersion": "1.3.1",
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "url": "https://autosar-skills.github.io/autosar-agent-skills/dbc-matrix-audit.html",
+      "codeRepository": "https://github.com/autosar-skills/autosar-agent-skills",
+      "programmingLanguage": "Python",
+      "author": { "@id": "https://me.tech-harry.top/#person" },
+      "description": "DBC communication matrix auditor: 11 structural checks (bit-field overlap, out-of-range signals, left/right asymmetry, naming drift, GBK encoding), two-revision diff, live frame decoding, CSV export. No third-party dependencies."
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://autosar-skills.github.io/autosar-agent-skills/#arxml-dbc-consistency",
+      "name": "arxml-dbc-consistency",
+      "applicationCategory": "DeveloperApplication",
+      "applicationSubCategory": "Static analysis",
+      "operatingSystem": "Any (Python 3.8+)",
+      "softwareVersion": "1.1.2",
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "url": "https://autosar-skills.github.io/autosar-agent-skills/arxml-dbc-consistency.html",
+      "codeRepository": "https://github.com/autosar-skills/autosar-agent-skills",
+      "programmingLanguage": "Python",
+      "author": { "@id": "https://me.tech-harry.top/#person" },
+      "description": "Cross-validates AUTOSAR Classic ECU configuration (Com / PduR / CanIf / CanDrv ECUC containers) against a DBC communication matrix across 26 check codes: CAN ID binding, DLC, bit geometry, byte order, init values, PduR routing and TX/RX direction."
+    },
+    {
+      "@type": "TechArticle",
+      "@id": "https://autosar-skills.github.io/autosar-agent-skills/#article",
+      "headline": "Zero-dependency AUTOSAR / CAN tooling for AI agents",
+      "description": "Why these tools exist: bugs that compile cleanly and only surface during ECU integration testing.",
+      "inLanguage": "en",
+      "author": { "@id": "https://me.tech-harry.top/#person" },
+      "datePublished": "2026-11-05",
+      "proficiencyLevel": "Expert"
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<div class="glow"></div>
+
+<header class="bar">
+  <div class="bar-in">
+    <a class="brand" href="./"><b>A</b>UTOSAR-AGENT-SKILLS</a>
+    <span class="sp"></span>
+    <a href="https://github.com/autosar-skills/autosar-agent-skills">GitHub</a>
+    <a href="llms.txt">llms.txt</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h1>Bugs that compile cleanly<br><span class="grad">and blow up at integration.</span></h1>
+
+  <p class="lede">
+    Zero-dependency tooling for AUTOSAR Classic Platform and CAN communication
+    matrices. Every script is standard-library Python, so it runs inside an
+    air-gapped build server, a CI container, or an agent sandbox without a
+    network round-trip or a <code>pip install</code>.
+  </p>
+
+  <div class="meta">
+    <span>Python 3.8+</span>
+    <span>0 dependencies</span>
+    <span>MIT</span>
+    <span>11 + 26 check codes</span>
+    <span>65 tests</span>
+  </div>
+
+  <div class="cards">
+    <a class="card" href="dbc-matrix-audit.html">
+      <h3>dbc-matrix-audit</h3>
+      <p>DBC communication matrix auditor — bit-field overlap, out-of-range signals,
+         left/right asymmetry, naming drift, GBK encoding. Plus two-revision diff,
+         live frame decoding and CSV export.</p>
+    </a>
+    <a class="card" href="arxml-dbc-consistency.html">
+      <h3>arxml-dbc-consistency</h3>
+      <p>ARXML comm-stack × DBC cross-validation — CAN ID binding, DLC, bit geometry,
+         byte order, init values, PduR routing, TX/RX direction. 26 check codes,
+         exits 1 on error so it drops into CI.</p>
+    </a>
+  </div>
+
+  <h2>Install</h2>
+
+<pre><code>git clone https://github.com/autosar-skills/autosar-agent-skills.git
+cd autosar-agent-skills
+python -m unittest discover -s tests      # 65 tests, standard library only</code></pre>
+
+  <p>
+    No <code>pip install</code> required. Every skill directory is self-contained —
+    put <code>skills/&lt;name&gt;/</code> on an agent's skill path and it loads, or run the
+    script directly as a CLI tool.
+  </p>
+
+  <h2>Why not an existing library</h2>
+
+  <p>
+    <code>cantools</code> is a good library, but parsing throws away exactly what an
+    audit needs: cycle times, value tables, comments and frame/signal attributes.
+    It also silently tolerates GBK byte sequences — parsing appears to succeed while
+    every comment is lost. These tools keep all of it and report the encoding
+    problem explicitly.
+  </p>
+
+  <div class="note">
+    Scope is deliberately static analysis only. No bus simulation, no runtime
+    behaviour verification — a clean run means the configuration is internally
+    consistent and consistent with the matrix, not that the network works.
+  </div>
+
+  <h2>Background</h2>
+
+  <p>
+    Design rationale: <a href="https://me.tech-harry.top/blog/dbc-matrix-audit-skill.en.html">Designing
+    an engineering-grade skill for an AI agent</a>. The debugging story behind the
+    ARXML checker: <a href="https://me.tech-harry.top/blog/arxml-dbc-consistency.en.html">105
+    errors, 99 of them were not real</a>.
+  </p>
+
+  <footer>
+    <span>MIT License</span>
+    <a href="https://github.com/autosar-skills/autosar-agent-skills">github.com/autosar-skills/autosar-agent-skills</a>
+    <a href="https://me.tech-harry.top/">Harry Zhao</a>
+  </footer>
+</div>
+</body>
+</html>

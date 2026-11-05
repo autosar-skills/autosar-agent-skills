@@ -217,6 +217,10 @@ ARXML 常同时管多条 CAN。脚本按 `CanIfBufferCfg → CanIfHthCfg → Can
 - English: `skills/arxml-dbc-consistency/references/checks.en.md`
 - 英文 SKILL.md（市场包用）：`packaging/agensi/arxml-dbc-consistency/SKILL.md`
 
+## 文档站
+
+带完整结构化标记的文档页：https://autosar-skills.github.io/autosar-agent-skills/
+
 ## 安装
 
 ```bash
