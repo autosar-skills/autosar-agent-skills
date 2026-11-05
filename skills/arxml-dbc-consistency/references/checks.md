@@ -37,7 +37,7 @@ DBC 帧 ───────┼── CanIf    CanIfTxPduCfg / CanIfRxPduCfg
 | `AXD-011` | 初始值不一致（**以 DBC 的 `GenSigStartValue` 为准**） | 上电到首次收发之间双方值不同，状态判断出错（例：大灯高度初始角） |
 | `AXD-014` | PduR 路由引用悬空 | 路由失效，链接期或运行时才暴露 |
 | `AXD-015` | Com / CanIf PDU 没有 PduR 路由 | 上下层断路，数据不流转 |
-| `AXD-016` | DBC 是 CAN FD 但 CanIf 未配 FD 帧格式 | FD 帧按普通帧发，长数据丢失 |
+| `AXD-016` | DBC 标了 CAN FD，CanIf 却配成经典帧 | FD 帧按普通帧发，长数据丢失。**注意两边都可能错**：若该帧信号真占满 >8 字节，则 FD 是事实、错的是标记；若这帧本就不该出现在本 ECU 的矩阵里，则是 DBC 内容问题 |
 | `AXD-017` | 信号越过 IPdu 边界 | 写坏相邻字节 |
 | `AXD-018` | Com 内部信号位重叠 | 两个信号抢同一位 |
 | `AXD-022` | CanIf 收发方向与 DBC 发送方矛盾 | 报文不进正确的缓冲 |

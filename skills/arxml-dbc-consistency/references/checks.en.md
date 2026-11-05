@@ -40,7 +40,7 @@ Matching by name is wrong: `IPDU_COM_TP_Param` and the DBC frame
 | `AXD-011` | init value mismatch (**DBC `GenSigStartValue` is authoritative**) | sender and receiver see different values until the first update (e.g. headlamp levelling start angle) |
 | `AXD-014` | PduR route points at a non-existent PDU | route dead, only surfaces at link time or runtime |
 | `AXD-015` | Com / CanIf PDU has no PduR route | layers disconnected, no data flows |
-| `AXD-016` | DBC says CAN FD but CanIf has no FD frame format | FD frame sent as classic, long payload lost |
+| `AXD-016` | DBC marks CAN FD, CanIf configured as classic | FD frame sent as classic, payload lost. **Either side can be wrong**: if the frame's signals genuinely span more than 8 bytes, FD is a fact and the flag is what is wrong; if the frame does not belong to this ECU at all, it is a DBC content problem |
 | `AXD-017` | signal crosses the IPdu boundary | writes into neighbouring bytes |
 | `AXD-018` | bit overlap between signals inside Com | two signals claim the same bits, one is always wrong |
 | `AXD-022` | CanIf TX/RX contradicts the DBC sender | frame never reaches the right buffer |
