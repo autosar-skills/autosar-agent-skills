@@ -25,8 +25,8 @@ that silently drops every frame because a CRC seed moved.
 
 | Skill | What it does | Deps |
 |---|---|---|
-| [dbc-matrix-audit](skills/dbc-matrix-audit/) | DBC communication matrix audit: bit-field overlap, out-of-range signals, left/right asymmetry, naming drift, GBK encoding | **none** |
-| [arxml-dbc-consistency](skills/arxml-dbc-consistency/) | ARXML comm-stack × DBC cross-validation: binding, DLC, bit geometry, byte order, init values, PduR routing, TX/RX direction | **none** |
+| [dbc-matrix-audit](https://github.com/autosar-skills/autosar-agent-skills/tree/main/skills/dbc-matrix-audit) | DBC communication matrix audit: bit-field overlap, out-of-range signals, left/right asymmetry, naming drift, GBK encoding | **none** |
+| [arxml-dbc-consistency](https://github.com/autosar-skills/autosar-agent-skills/tree/main/skills/arxml-dbc-consistency) | ARXML comm-stack × DBC cross-validation: binding, DLC, bit geometry, byte order, init values, PduR routing, TX/RX direction | **none** |
 
 Also listed on the Agensi marketplace: **[DBC Matrix Audit](https://www.agensi.io/skills/dbc-matrix-audit)** (free).
 The English packages uploaded there are generated from this repo by
@@ -110,7 +110,7 @@ $ python skills/dbc-matrix-audit/scripts/dbc_analyze.py diff old.dbc new.dbc
       at the old id.
 ```
 
-Rule details and **false-positive scenarios**: [references/checks.md](skills/dbc-matrix-audit/references/checks.md).
+Rule details and **false-positive scenarios**: [references/checks.md](https://github.com/autosar-skills/autosar-agent-skills/blob/main/skills/dbc-matrix-audit/references/checks.md).
 
 ### Why not cantools
 
@@ -243,11 +243,18 @@ cd autosar-agent-skills
 python -m unittest discover -s tests      # 65 tests, standard library only
 ```
 
-No `pip install` required. For the short `dbc-analyze` command:
+No `pip install` required — the scripts run from the clone as-is. If you want
+the short commands on your PATH:
 
 ```bash
-pip install -e .
+pip install dbc-matrix-audit
+dbc-analyze lint matrix.dbc        # DBC auditor
+arxml-dbc-check check cfg.arxml matrix.dbc   # ARXML x DBC cross-check
 ```
+
+> Note: `dbc-analyze` output and help are English. `arxml-dbc-check` currently
+> emits Chinese messages — the audit vocabulary (bit geometry, PduR routing,
+> FD flags) is identical, but the prose is not translated yet.
 
 ## Using as an agent skill
 

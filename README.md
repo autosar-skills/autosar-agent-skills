@@ -229,11 +229,16 @@ cd autosar-agent-skills
 python -m unittest discover -s tests      # 65 个测试，纯标准库
 ```
 
-不需要 `pip install`。要用 `dbc-analyze` 这个短命令时：
+不需要 `pip install`，克隆下来就能跑。想把短命令装进 PATH：
 
 ```bash
-pip install -e .
+pip install dbc-matrix-audit
+dbc-analyze lint matrix.dbc                  # DBC 审计
+arxml-dbc-check check cfg.arxml matrix.dbc   # ARXML × DBC 交叉校验
 ```
+
+> 说明：`dbc-analyze` 的输出与帮助为英文；`arxml-dbc-check` 目前输出中文，
+> 检查语义一致，但尚未提供英文文案。
 
 ## 作为 Agent Skill 使用
 
