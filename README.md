@@ -37,6 +37,7 @@ DBC 文件 ────┘        │
 |---|---|---|
 | [dbc-matrix-audit](skills/dbc-matrix-audit/) | DBC 通信矩阵审计：位域重叠、越界、左右不对称、命名漂移、GBK 编码 | **无** |
 | [arxml-dbc-consistency](skills/arxml-dbc-consistency/) | ARXML 通信栈 × DBC 交叉校验：绑定、DLC、位几何、字节序、初始值、PduR 路由、收发方向 | **无** |
+| [cdd-arxml-consistency](skills/cdd-arxml-consistency/) | CDD 诊断规范 × ARXML 诊断配置交叉校验：DID、DTC、例程、诊断 CAN 地址、会话、安全访问、P2/S3/STmin | **无** |
 
 已上架 Agensi 市场：**[DBC Matrix Audit](https://www.agensi.io/skills/dbc-matrix-audit)**（免费，已上线）。
 上架用的英文包由 `tools/pack_marketplace.py` 从本仓库生成；同样的输入重复构建字节一致。
@@ -218,6 +219,59 @@ ARXML 常同时管多条 CAN。脚本按 `CanIfBufferCfg → CanIfHthCfg → Can
 - English: `skills/arxml-dbc-consistency/references/checks.en.md`
 - 英文 SKILL.md（市场包用）：`packaging/agensi/arxml-dbc-consistency/SKILL.md`
 
+## cdd-arxml-consistency
+
+诊断链路的交叉校验：**CANdelaStudio 的 CDD（诊断仪照着实现的规范）** 对
+**ARXML 里的 Dcm / Dem / CanIf / CanTp（ECU 实际运行的配置）**。
+25 个检查码，纯标准库，只读。
+
+```bash
+python skills/cdd-arxml-consistency/scripts/cdd_arxml_check.py probe  ecu.cdd ecuconfig.xml
+python skills/cdd-arxml-consistency/scripts/cdd_arxml_check.py check  ecu.cdd ecuconfig.xml
+python skills/cdd-arxml-consistency/scripts/cdd_arxml_check.py check  ecu.cdd ecuconfig.xml --json
+python skills/cdd-arxml-consistency/scripts/cdd_arxml_check.py matrix ecu.cdd ecuconfig.xml -o inv.csv
+python skills/cdd-arxml-consistency/scripts/cdd_arxml_check.py selftest
+```
+
+退出码 `0` 无 error / `1` 有 error / `2` 参数或文件错误，可直接进 CI。
+
+### 和普通 diff 的区别：它会指方向
+
+发现 CAN ID 不一致时**不猜哪边错**，而是查 `Can/CanConfigSet/CanHwFilter` 的
+`Code` + `Mask` 做位运算裁决：
+
+```
+匹配条件：(frame_id & mask) == (code & mask)
+```
+
+实测一例：CDD 写 `0x738`、CanIf 写 `0x72F`，51 个滤波器里只有 `0x738`（mask `0x7FE`）
+能过 —— 芯片不会把 `0x72F` 的帧交给上层，所以**错的是 CanIf**，改哪一边是确定的。
+同时 CanTp 的 `N_SA/N_TA = 56 (0x38)` 正好是 `0x738` 的低字节，是第二条独立证据。
+
+### 没配 ≠ 没问题
+
+CDD 里的诊断地址有两处来源：`<ECU>` 下的属性**实例**（本 ECU 配置），
+和 `DEFATTS/ECUATTS` 下的属性**定义**（CANdelaStudio 模板默认值）。
+模板另存后没填 CAN 页时只有后者，此时读不到任何地址。
+
+早期版本会让 8 个检查各自 `continue` —— 报告里完全不提 CAN ID，
+和「CAN ID 检查通过」在输出上一模一样。现在 `CDX-013` / `CDX-025`
+把缺口本身报出来，并把 DEFATTS 的值明确标注为**模板值**而非配置值。
+拿 `0x700` 导 ODX，诊断仪就按 `0x700` 发请求。
+
+### 查不出来的（工具自己会说）
+
+DID 的数据长度与结构、服务-会话-安全的依赖矩阵、NRC 的使用范围、
+安全算法、快照记录字段、N_SA/N_TA 与 CDD 地址方案的逐项核对 —— 都不覆盖。
+`SKILL.md` 的 Step 4 要求每次报告都把这些写出来，否则「25 项通过」
+会被当成「诊断全对」。
+
+### 文档
+
+- 中文：`skills/cdd-arxml-consistency/references/checks.md`
+- English: `skills/cdd-arxml-consistency/references/checks.en.md`
+- 英文 SKILL.md（市场包用）：`packaging/agensi/cdd-arxml-consistency/SKILL.md`
+
 ## 文档站
 
 带完整结构化标记的文档页：https://autosar-skills.github.io/autosar-agent-skills/
@@ -280,6 +334,13 @@ skills/arxml-dbc-consistency/
 ├── scripts/demo_fixtures.py  程序生成的示例（拓扑必须与真实工程一致）
 ├── scripts/test_contract.py  文档码 ↔ 代码实现 双向断言（中英双语都算）
 └── references/               checks.md（中）/ checks.en.md（英）
+skills/cdd-arxml-consistency/
+├── SKILL.md                  执行手册（Step 0 模式判定 / 执行 / 汇报 / 查不出来的）
+├── README.md                 英文说明（仓库与市场共用）
+├── scripts/cdd_arxml_check.py 核心实现（单文件，标准库）
+├── scripts/demo_fixtures.py  2 组 fixture（配好的 / CAN 页未填的）
+├── scripts/test_contract.py  文档码 ↔ 代码实现 双向断言
+└── references/               checks.md（中）/ checks.en.md（英）
 tools/gen_demo_dbc.py         示例生成器
 tools/pack_marketplace.py     市场打包器（可复现，带结构校验）
 tests/                        65 个单元测试（含 diff 专项）
@@ -293,6 +354,7 @@ dist/                         构建产物（gitignored，用上面两个脚本�
 ```bash
 python3 tools/pack_marketplace.py                              # → dist/agensi/dbc-matrix-audit.zip
 python3 tools/pack_marketplace.py --skill arxml-dbc-consistency  # → dist/agensi/arxml-dbc-consistency.zip
+python3 tools/pack_marketplace.py --skill cdd-arxml-consistency   # → dist/agensi/cdd-arxml-consistency.zip
 python3 tools/pack_marketplace.py --check                        # 只校验不落盘
 ```
 
