@@ -8,7 +8,7 @@ Submission record. Edit here first on the next revision, then re-submit.
 |---|---|
 | Marketplace status | `not submitted` — first submission 2026-11-06 |
 | Live package | none yet |
-| Repo HEAD package | `dist/agensi/cdd-arxml-consistency.zip` |
+| Repo HEAD package | `dist/agensi/cdd-arxml-consistency.zip`, sha256 `bb9b305c1e0692ad7334ca6fd26d133e3e65806398febef4e5963672645b0dd1` |
 | Build | `python3 tools/pack_marketplace.py --skill cdd-arxml-consistency` |
 
 Review takes 24-48h. 3 total skills: 2 live/pending, 1 new.
